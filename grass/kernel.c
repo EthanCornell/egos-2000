@@ -111,6 +111,16 @@ static void proc_yield() {
     /* Modify mstatus.MPP to enter machine or user mode during mret
      * depending on whether curr_pid is a grass server or a user app
      */
+    int mstatus;
+    asm("csrr %0, mstatus" : "=r"(mstatus));
+    if (curr_pid >= GPID_USER_START) {
+        // Set MPP to user mode (00)
+        mstatus &= ~(0x3 << 11);
+    } else {
+        // Set MPP to machine mode (11)
+        mstatus |= (0x3 << 11);
+    }
+    asm("csrw mstatus, %0" :: "r"(mstatus));
 
     /* Student's code ends here. */
 
