@@ -60,10 +60,33 @@ void paging_init() {
 //     memset(cache_slots, 0xFF, sizeof(cache_slots)); // Initializes the cache_slots array, setting all values to -1 (0xFF).
 // }
 
-int paging_invalidate_cache(int frame_id) { // Function to invalidate a specific frame in the cache.
-    for (int j = 0; j < ARTY_CACHED_NFRAMES; j++)  // Iterates through all cache slots.
-        if (cache_slots[j] == frame_id) cache_slots[j] = -1; // If the frame ID matches, it sets the cache slot to -1 (invalidates it).
+// int paging_invalidate_cache(int frame_id) { // Function to invalidate a specific frame in the cache.
+//     for (int j = 0; j < ARTY_CACHED_NFRAMES; j++)  // Iterates through all cache slots.
+//         if (cache_slots[j] == frame_id) cache_slots[j] = -1; // If the frame ID matches, it sets the cache slot to -1 (invalidates it).
+// }
+
+
+
+
+//Main change:
+//The loop exits as soon as the targeted frame is invalidated, reducing unnecessary iterations.
+//The last_used array is updated to maintain the LRU order. This step assumes that you have implemented an LRU cache as suggested earlier.
+//The function returns a status indicating whether the invalidation was successful (1) or the frame was not found (0).
+int paging_invalidate_cache(int frame_id) {
+    // Function to invalidate a specific frame in the cache.
+    for (int j = 0; j < ARTY_CACHED_NFRAMES; j++) {
+        if (cache_slots[j] == frame_id) {
+            cache_slots[j] = -1; // Invalidate the cache slot.
+
+            // Update the LRU tracking (assuming you have a last_used array as per LRU implementation).
+            last_used[j] = -1; // Indicate that this slot is no longer used.
+
+            return 1; // Return 1 to indicate successful invalidation.
+        }
+    }
+    return 0; // Return 0 to indicate that the frame was not found.
 }
+
 
 int paging_write(int frame_id, int page_no) { // Function to handle writing a page to a cache frame.
     char* src = (void*)(page_no << 12); // Calculates the source address by shifting the page number left by 12 bits (effectively multiplying by 4096, the size of a page).
