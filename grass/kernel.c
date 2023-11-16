@@ -19,6 +19,16 @@
 #define EXCP_ID_ECALL_U    8  // Defines an exception ID for user mode system calls.
 #define EXCP_ID_ECALL_M    11 // Defines an exception ID for machine mode system calls.
 
+#define INTR_ID_SOFT       3  // Defines an interrupt ID for software interrupts.
+#define INTR_ID_TIMER      7  // Defines an interrupt ID for timer interrupts.
+
+static void proc_yield();           // Forward declaration of a function to yield the processor.
+static void proc_syscall();         // Forward declaration of a function to handle system calls.
+static void (*kernel_entry)();      // Declaration of a function pointer for kernel entry.
+
+int proc_curr_idx;                  // Variable to store the current process index.
+struct process proc_set[MAX_NPROCESS]; // Array to hold process control blocks.
+
 void excp_entry(int id) {
     /* Exception handling entry point function. */
 
@@ -38,15 +48,7 @@ void excp_entry(int id) {
 }
 
 
-#define INTR_ID_SOFT       3  // Defines an interrupt ID for software interrupts.
-#define INTR_ID_TIMER      7  // Defines an interrupt ID for timer interrupts.
 
-static void proc_yield();           // Forward declaration of a function to yield the processor.
-static void proc_syscall();         // Forward declaration of a function to handle system calls.
-static void (*kernel_entry)();      // Declaration of a function pointer for kernel entry.
-
-int proc_curr_idx;                  // Variable to store the current process index.
-struct process proc_set[MAX_NPROCESS]; // Array to hold process control blocks.
 
 void intr_entry(int id) {
     /* Interrupt handling entry point function. */
