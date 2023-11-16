@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* Author: Yunhao Zhang
+/* Author: Yunhao Zhang & I-Hsuan Huang
  * Description: memory management unit (MMU)
  * implementation of 2 translation mechanisms: page table and software TLB
  */
@@ -12,61 +12,60 @@
 #include "disk.h"
 #include "servers.h"
 #include <string.h>
-
 /* Interface of the paging device, see earth/dev_page.c */
-void  paging_init();
-int   paging_invalidate_cache(int frame_id);
-int   paging_write(int frame_id, int page_no);
-char* paging_read(int frame_id, int alloc_only);
+void  paging_init();                 // Function prototype to initialize paging.
+int   paging_invalidate_cache(int frame_id); // Invalidate cache for a frame.
+int   paging_write(int frame_id, int page_no); // Write a frame to a page.
+char* paging_read(int frame_id, int alloc_only); // Read from a frame, possibly allocating only.
 
 /* Allocation and free of physical frames */
-#define NFRAMES 256
+#define NFRAMES 256               // Define a constant for the number of frames.
 struct frame_mapping {
-    int use;     /* Is the frame allocated? */
-    int pid;     /* Which process owns the frame? */
-    int page_no; /* Which virtual page is the frame mapped to? */
-} table[NFRAMES];
+    int use;     // Is the frame allocated?
+    int pid;     // Which process owns the frame?
+    int page_no; // Which virtual page is the frame mapped to?
+} table[NFRAMES];                 // Array of frame mappings.
 
-int mmu_alloc(int* frame_id, void** cached_addr) {
-    for (int i = 0; i < NFRAMES; i++)
-        if (!table[i].use) {
-            *frame_id = i;
-            *cached_addr = paging_read(i, 1);
-            table[i].use = 1;
-            return 0;
+int mmu_alloc(int* frame_id, void** cached_addr) { // Allocate a frame.
+    for (int i = 0; i < NFRAMES; i++) // Loop through the frames.
+        if (!table[i].use) {    // If frame is not in use:
+            *frame_id = i;       // Set the frame ID.
+            *cached_addr = paging_read(i, 1); // Read the frame, allocating if necessary.
+            table[i].use = 1;    // Mark the frame as used.
+            return 0;            // Return success.
         }
-    FATAL("mmu_alloc: no more available frames");
+    FATAL("mmu_alloc: no more available frames"); // If no frames available, fatal error.
 }
 
-int mmu_free(int pid) {
-    for (int i = 0; i < NFRAMES; i++)
-        if (table[i].use && table[i].pid == pid) {
-            paging_invalidate_cache(i);
-            memset(&table[i], 0, sizeof(struct frame_mapping));
+int mmu_free(int pid) {             // Free frames for a process.
+    for (int i = 0; i < NFRAMES; i++) // Loop through frames.
+        if (table[i].use && table[i].pid == pid) { // If frame is used by the process:
+            paging_invalidate_cache(i); // Invalidate the frame's cache.
+            memset(&table[i], 0, sizeof(struct frame_mapping)); // Reset the frame's mapping.
         }
 }
 
 /* Software TLB Translation */
-int soft_tlb_map(int pid, int page_no, int frame_id) {
-    table[frame_id].pid = pid;
-    table[frame_id].page_no = page_no;
+int soft_tlb_map(int pid, int page_no, int frame_id) { // Map a virtual page to a frame.
+    table[frame_id].pid = pid;       // Set the process ID for the frame.
+    table[frame_id].page_no = page_no; // Set the virtual page number for the frame.
 }
 
-int soft_tlb_switch(int pid) {
-    static int curr_vm_pid = -1;
-    if (pid == curr_vm_pid) return 0;
+int soft_tlb_switch(int pid) {       // Switch the TLB context for a process.
+    static int curr_vm_pid = -1;     // Static variable for the current VM process ID.
+    if (pid == curr_vm_pid) return 0; // If the process is already the current, return.
 
-    /* Unmap curr_vm_pid from the user address space */
-    for (int i = 0; i < NFRAMES; i++)
-        if (table[i].use && table[i].pid == curr_vm_pid)
-            paging_write(i, table[i].page_no);
+    // Unmap curr_vm_pid from the user address space
+    for (int i = 0; i < NFRAMES; i++) // Loop through frames.
+        if (table[i].use && table[i].pid == curr_vm_pid) // If frame belongs to current process:
+            paging_write(i, table[i].page_no); // Write the frame to its page.
 
-    /* Map pid to the user address space */
-    for (int i = 0; i < NFRAMES; i++)
-        if (table[i].use && table[i].pid == pid)
-            memcpy((void*)(table[i].page_no << 12), paging_read(i, 0), PAGE_SIZE);
+    // Map pid to the user address space
+    for (int i = 0; i < NFRAMES; i++) // Loop through frames.
+        if (table[i].use && table[i].pid == pid) // If frame belongs to new process:
+            memcpy((void*)(table[i].page_no << 12), paging_read(i, 0), PAGE_SIZE); // Copy data from frame to virtual page.
 
-    curr_vm_pid = pid;
+    curr_vm_pid = pid;               // Update the current VM process ID.
 }
 
 /* Page Table Translation
@@ -80,79 +79,79 @@ int soft_tlb_switch(int pid) {
  * tables and mmu_switch() will modify satp (page table base register)
  */
 
-#define OS_RWX   0xF
-#define USER_RWX 0x1F
-static unsigned int frame_id, *root, *leaf;
+#define OS_RWX   0xF       // Define permission flags for the OS.
+#define USER_RWX 0x1F      // Define permission flags for the user.
+static unsigned int frame_id, *root, *leaf; // Static variables for frame ID and page table pointers.
 
 /* 32 is a number large enough for demo purpose */
-static unsigned int* pid_to_pagetable_base[32];
+static unsigned int* pid_to_pagetable_base[32]; // Array mapping process ID to page table base.
 
 void setup_identity_region(int pid, unsigned int addr, int npages, int flag) {
-    int vpn1 = addr >> 22;
+    int vpn1 = addr >> 22; // Calculate the first virtual page number component.
 
     if (root[vpn1] & 0x1) {
         // Leaf has been allocated
-        leaf = (void*)((root[vpn1] << 2) & 0xFFFFF000);
+        leaf = (void*)((root[vpn1] << 2) & 0xFFFFF000); // Get the leaf page table address.
     } else {
         // Leaf has not been allocated
-        earth->mmu_alloc(&frame_id, (void**)&leaf);
-        table[frame_id].pid = pid;
-        memset(leaf, 0, PAGE_SIZE);
-        root[vpn1] = ((unsigned int)leaf >> 2) | 0x1;
+        earth->mmu_alloc(&frame_id, (void**)&leaf); // Allocate a frame for the leaf page table.
+        table[frame_id].pid = pid; // Assign the frame to the process.
+        memset(leaf, 0, PAGE_SIZE); // Initialize the leaf page table.
+        root[vpn1] = ((unsigned int)leaf >> 2) | 0x1; // Set the root entry to point to the leaf page table.
     }
 
-    /* Setup the entries in the leaf page table */
-    int vpn0 = (addr >> 12) & 0x3FF;
-    for (int i = 0; i < npages; i++)
-        leaf[vpn0 + i] = ((addr + i * PAGE_SIZE) >> 2) | flag;
+    // Setup the entries in the leaf page table
+    int vpn0 = (addr >> 12) & 0x3FF; // Calculate the second virtual page number component.
+    for (int i = 0; i < npages; i++) // Loop to set up each page.
+        leaf[vpn0 + i] = ((addr + i * PAGE_SIZE) >> 2) | flag; // Map each page.
 }
 
 void pagetable_identity_mapping(int pid) {
-    /* Allocate the root page table and set the page table base (satp) */
-    earth->mmu_alloc(&frame_id, (void**)&root);
-    table[frame_id].pid = pid;
-    memset(root, 0, PAGE_SIZE);
-    pid_to_pagetable_base[pid] = root;
+    // Allocate the root page table and set the page table base (satp)
+    earth->mmu_alloc(&frame_id, (void**)&root); // Allocate a frame for the root page table.
+    table[frame_id].pid = pid; // Assign the frame to the process.
+    memset(root, 0, PAGE_SIZE); // Initialize the root page table.
+    pid_to_pagetable_base[pid] = root; // Set the process's page table base.
 
-    /* Allocate the leaf page tables */
-    setup_identity_region(pid, 0x02000000, 16, OS_RWX);   /* CLINT */
-    setup_identity_region(pid, 0x10013000, 1, OS_RWX);    /* UART0 */
-    setup_identity_region(pid, 0x10024000, 1, OS_RWX);    /* SPI1 */
-    setup_identity_region(pid, 0x20400000, 1024, OS_RWX); /* boot ROM */
-    setup_identity_region(pid, 0x20800000, 1024, OS_RWX); /* disk image */
-    setup_identity_region(pid, 0x80000000, 1024, OS_RWX); /* DTIM memory */
+    // Allocate the leaf page tables
+    setup_identity_region(pid, 0x02000000, 16, OS_RWX);   // Map CLINT region.
+    setup_identity_region(pid, 0x10013000, 1, OS_RWX);    // Map UART0 region.
+    setup_identity_region(pid, 0x10024000, 1, OS_RWX);    // Map SPI1 region.
+    setup_identity_region(pid, 0x20400000, 1024, OS_RWX); // Map boot ROM region.
+    setup_identity_region(pid, 0x20800000, 1024, OS_RWX); // Map disk image region.
+    setup_identity_region(pid, 0x80000000, 1024, OS_RWX); // Map DTIM memory region.
 
-    for (int i = 0; i < 8; i++)           /* ITIM memory is 32MB on QEMU */
-        setup_identity_region(pid, 0x08000000 + i * 0x400000, 1024, OS_RWX);
+    for (int i = 0; i < 8; i++) // Loop to map ITIM memory (32MB on QEMU).
+        setup_identity_region(pid, 0x08000000 + i * 0x400000, 1024, OS_RWX); // Map each 4MB block.
 }
 
 int page_table_map(int pid, int page_no, int frame_id) {
-    if (pid >= 32) FATAL("page_table_map: pid too large");
+    if (pid >= 32) FATAL("page_table_map: pid too large"); // Check for valid process ID.
 
-    /* Check if page tables for pid do not exist, build the tables */
+    // Check if page tables for pid do not exist, build the tables
     if (!pid_to_pagetable_base[pid]) {
-        pagetable_identity_mapping(pid);
+        pagetable_identity_mapping(pid); // Create identity mapping for the process.
     }
 
-    /* Calculate virtual page number (VPN) components */
-    int vpn1 = page_no >> 10;
-    int vpn0 = page_no & 0x3FF;
+    // Calculate virtual page number (VPN) components
+    int vpn1 = page_no >> 10; // Calculate the first virtual page number component.
+    int vpn0 = page_no & 0x3FF; // Calculate the second virtual page number component.
 
-    /* Fetch or create root page table */
-    unsigned int *root = pid_to_pagetable_base[pid];
+    // Fetch or create root page table
+    unsigned int *root = pid_to_pagetable_base[pid]; // Get the root page table for the process.
     unsigned int *leaf;
 
     if (root[vpn1] & 0x1) {
-        leaf = (void*)((root[vpn1] << 2) & 0xFFFFF000);
+        leaf = (void*)((root[vpn1] << 2) & 0xFFFFF000); // Get the leaf page table address.
     } else {
-        earth->mmu_alloc(&frame_id, (void**)&leaf);
-        table[frame_id].pid = pid;
-        memset(leaf, 0, PAGE_SIZE);
-        root[vpn1] = ((unsigned int)leaf >> 2) | 0x1;
+        earth->mmu_alloc(&frame_id, (void**)&leaf); // Allocate a frame for the leaf page table.
+        table[frame_id].pid = pid; // Assign the frame to the process.
+        memset(leaf, 0, PAGE_SIZE); // Initialize the leaf page table.
+        root[vpn1] = ((unsigned int)leaf >> 2) | 0x1; // Set the root entry to point to the leaf page table.
     }
 
-    /* Map the frame in the leaf page table */
-    leaf[vpn0] = (frame_id << 2) | USER_RWX;
+    // Map the frame in the leaf page table
+    leaf[vpn0] = (frame_id << 2) | USER_RWX; // Map the frame with user permissions.
 
     return 0;   // Indicating success
 }
