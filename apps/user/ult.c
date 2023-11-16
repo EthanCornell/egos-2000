@@ -10,36 +10,120 @@
  */
 
 #include "app.h"
+#include <setjmp.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 /** These two functions are defined in grass/context.S **/
 void ctx_start(void** old_sp, void* new_sp);
 void ctx_switch(void** old_sp, void* new_sp);
 
-/** Multi-threading functions **/
+/** Forward declarations for thread functions **/
+void thread_exit();
 
+/** Multi-threading functions **/
+#define MAX_THREADS 10
+
+// Thread structure
 struct thread {
-    /* Student's code goes here. */
+    void (*function)(void*);
+    void *arg;
+    bool is_active;
+    jmp_buf env; // Environment buffer to store the thread context
 };
 
-void thread_init(){
-    /* Student's code goes here */
+struct thread threads[MAX_THREADS];
+int current_thread_idx = -1;
+
+// Initialize thread management
+void thread_init() {
+    for (int i = 0; i < MAX_THREADS; ++i) {
+        threads[i].is_active = false;
+    }
 }
 
-void ctx_entry(void){
-    /* Student's code goes here. */
+// Entry point for threads
+void ctx_entry() {
+    if (current_thread_idx >= 0 && threads[current_thread_idx].is_active) {
+        threads[current_thread_idx].function(threads[current_thread_idx].arg);
+        thread_exit(); // Exit the thread after function execution
+    }
 }
 
-void thread_create(void (*f)(void *), void *arg, unsigned int stack_size){
-    /* Student's code goes here. */
+// Create a new thread
+void thread_create(void (*f)(void *), void *arg) {
+    for (int i = 0; i < MAX_THREADS; ++i) {
+        if (!threads[i].is_active) {
+            threads[i].function = f;
+            threads[i].arg = arg;
+            threads[i].is_active = true;
+
+            if (setjmp(threads[i].env) == 0) {
+                // Save the thread context and return
+                return;
+            } else {
+                // When longjmp is called, start the thread function
+                threads[i].function(threads[i].arg);
+                thread_exit();
+            }
+        }
+    }
 }
 
-void thread_yield(){
-    /* Student's code goes here. */
+// Yield execution to another thread
+void thread_yield() {
+    int current_thread = current_thread_idx;
+    int next_thread = (current_thread + 1) % MAX_THREADS;
+    current_thread_idx = next_thread;
+
+    if (threads[current_thread].is_active) {
+        if (setjmp(threads[current_thread].env) == 0) {
+            longjmp(threads[next_thread].env, 1);
+        }
+    } else {
+        longjmp(threads[next_thread].env, 1);
+    }
 }
 
-void thread_exit(){
-    /* Student's code goes here. */
+// Exit the current thread
+void thread_exit() {
+    if (current_thread_idx >= 0) {
+        threads[current_thread_idx].is_active = false;
+        // Find the next active thread and switch to it
+        for (int i = (current_thread_idx + 1) % MAX_THREADS; i != current_thread_idx; i = (i + 1) % MAX_THREADS) {
+            if (threads[i].is_active) {
+                current_thread_idx = i;
+                longjmp(threads[i].env, 1);
+            }
+        }
+    }
 }
+
+
+// /** Multi-threading functions **/
+// struct thread {
+//     /* Student's code goes here. */
+// };
+
+// void thread_init(){
+//     /* Student's code goes here */
+// }
+
+// void ctx_entry(void){
+//     /* Student's code goes here. */
+// }
+
+// void thread_create(void (*f)(void *), void *arg, unsigned int stack_size){
+//     /* Student's code goes here. */
+// }
+
+// void thread_yield(){
+//     /* Student's code goes here. */
+// }
+
+// void thread_exit(){
+//     /* Student's code goes here. */
+// }
 
 /** Semaphore functions **/
 
