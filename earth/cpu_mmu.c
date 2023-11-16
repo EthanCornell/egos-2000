@@ -171,14 +171,20 @@ void mmu_init() {
     /* Student's code goes here (PMP memory protection). */
 
     /* Setup PMP TOR region 0x00000000 - 0x20000000 as r/w/x */
+    asm("csrw pmpaddr1, %0" : : "r" (0x20000000 >> 2));
+    asm("csrw pmpcfg0, %0"  : : "r" (0x1F | (1 << 7))); // TOR, R, W, X
 
     /* Setup PMP NAPOT region 0x20400000 - 0x20800000 as r/-/x */
+    asm("csrw pmpaddr2, %0" : : "r" (((0x20400000 >> 2) & ~0x3F) | 0x1F));
+    asm("csrw pmpcfg0, %0"  : : "r" (0x1D | (2 << 7))); // NAPOT, R, X
 
     /* Setup PMP NAPOT region 0x20800000 - 0x20C00000 as r/-/- */
+    asm("csrw pmpaddr3, %0" : : "r" (((0x20800000 >> 2) & ~0x3F) | 0x1F));
+    asm("csrw pmpcfg0, %0"  : : "r" (0x1C | (2 << 7))); // NAPOT, R
 
     /* Setup PMP NAPOT region 0x80000000 - 0x80004000 as r/w/- */
-
-    /* Student's code ends here. */
+    asm("csrw pmpaddr4, %0" : : "r" (((0x80000000 >> 2) & ~0x3F) | 0x1F));
+    asm("csrw pmpcfg0, %0"  : : "r" (0x1E | (2 << 7))); // NAPOT, R, W
 
     /* Arty board does not support supervisor mode or page tables */
     earth->translation = SOFT_TLB;
