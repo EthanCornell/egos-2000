@@ -290,32 +290,71 @@ static int treedisk_write(inode_store_t *this_bs, unsigned int ino, block_no off
     block_no *parent_no = &snapshot->inode->root;
     block_no parent_off = snapshot->inode_blockno;
     block_t *parent_block = (block_t *) &snapshot->inodeblock;
-    for (;;) {
-        /* Get or allocate the next block.
-         */
-        struct treedisk_indirblock tib;
-        if ((b = *parent_no) == 0) {
-            b = *parent_no = treedisk_alloc_block(ts, snapshot);
-            if ((*ts->below->write)(ts->below, ts->below_ino, parent_off, parent_block) < 0)
-                panic("treedisk_write: parent");
-            if (nlevels == 0)
-                break;
-            memset(&tib, 0, BLOCK_SIZE);
-        }
-        else {
-            if (nlevels == 0)
-                break;
-            if ((*ts->below->read)(ts->below, ts->below_ino, b, (block_t *) &tib) < 0)
-                panic("treedisk_write");
-        }
+    // for (;;) {
+    //     /* Get or allocate the next block.
+    //      */
+    //     struct treedisk_indirblock tib;
+    //     if ((b = *parent_no) == 0) {
+    //         b = *parent_no = treedisk_alloc_block(ts, snapshot);
+    //         if ((*ts->below->write)(ts->below, ts->below_ino, parent_off, parent_block) < 0)
+    //             panic("treedisk_write: parent");
+    //         if (nlevels == 0)
+    //             break;
+    //         memset(&tib, 0, BLOCK_SIZE);
+    //     }
+    //     else {
+    //         if (nlevels == 0)
+    //             break;
+    //         if ((*ts->below->read)(ts->below, ts->below_ino, b, (block_t *) &tib) < 0)
+    //             panic("treedisk_write");
+    //     }
 
-        /* Figure out the index into this block and get the block number.
-         */
+    //     /* Figure out the index into this block and get the block number.
+    //      */
+    //     nlevels--;
+    //     unsigned int index = log_shift_r(offset, nlevels * log_rpb) % REFS_PER_BLOCK;
+    //     parent_no = &tib.refs[index];
+    //     parent_block = (block_t *) &tib;
+    //     parent_off = b;
+    // }
+
+
+
+    // Key Points for Zero-Copy Optimization:
+    // Direct Write to Disk: Wherever possible, write data directly from the user-space memory buffer to the disk without intermediate copies. This can be implemented using direct I/O techniques if supported by the underlying system.
+    // Minimize Internal Copying: Avoid unnecessary copying of data within the function. For instance, if indirect blocks are used, consider ways to manipulate these blocks directly in memory.
+    // Buffer Management: Efficiently manage buffers used for reading blocks (like indirect blocks) to reduce the overhead of memory operations.
+    
+    // Proposed Optimizations:
+    // Direct Disk Writes: When writing block to the disk, use direct I/O techniques to write the data directly from the buffer to the disk. This might require support from the underlying ts->below->write function.
+    // Optimized Indirect Block Handling: When handling indirect blocks (struct treedisk_indirblock tib), try to minimize the number of times these blocks are read into and written from memory. 
+    // For example, if we're only updating a single reference in an indirect block, read the block, update the reference, and write it back in a single sequence to avoid multiple I/O operations.
+    // Inode Updates: Group inode updates (dirty_inode) to reduce the number of write operations. If multiple updates to the inode are required, perform them all at once before writing the inode block back to disk.
+    // Error Handling and Recovery: Implement robust error handling, especially for write operations. Ensure that in case of a failure, the file system can recover or maintain consistency.
+    
+    for (;;) {
+        struct treedisk_indirblock tib;
+
+        // Directly allocate or fetch the block
+        b = *parent_no = (*parent_no == 0) ? treedisk_alloc_block(ts, snapshot) : *parent_no;
+
+        // Handle the indirect block only if needed
+        if (nlevels > 0) {
+            if ((*ts->below->read)(ts->below, ts->below_ino, b, (block_t *)&tib) < 0)
+                panic("treedisk_write: read indirect block");
+
+            // Update the reference in the indirect block
+            unsigned int index = log_shift_r(offset, nlevels * log_rpb) % REFS_PER_BLOCK;
+            parent_no = &tib.refs[index];
+            if (nlevels == 1) { // If it's the last indirect level, update the reference to the data block
+                *parent_no = (*parent_no == 0) ? treedisk_alloc_block(ts, snapshot) : *parent_no;
+                if ((*ts->below->write)(ts->below, ts->below_ino, b, (block_t *)&tib) < 0)
+                    panic("treedisk_write: write indirect block");
+            }
+        } else {
+            break; // Exit the loop if no more levels are left
+        }
         nlevels--;
-        unsigned int index = log_shift_r(offset, nlevels * log_rpb) % REFS_PER_BLOCK;
-        parent_no = &tib.refs[index];
-        parent_block = (block_t *) &tib;
-        parent_off = b;
     }
 
     if ((*ts->below->write)(ts->below, ts->below_ino, b, block) < 0)
