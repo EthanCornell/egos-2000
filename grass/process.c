@@ -19,6 +19,7 @@
 //         if (atomic_load(&proc_set[i].pid) == pid) // Atomically load the pid and check
 //             atomic_store(&proc_set[i].status, status); // Atomically set the status if the pid matches
 // }
+
 // Function to set the status of a process with a given process ID (pid)
 static void proc_set_status(int pid, int status) {
     for (int i = 0; i < MAX_NPROCESS; i++) // Loop through all processes
@@ -48,6 +49,7 @@ void proc_set_runnable(int pid) { proc_set_status(pid, PROC_RUNNABLE); }
 
 //     FATAL("proc_alloc: reach the limit of %d processes", MAX_NPROCESS); // If no process slot is available, raise a fatal error
 // }
+
 // Allocate a new process
 int proc_alloc() {
     static int proc_nprocs = 0; // Static counter for the number of processes
@@ -58,8 +60,8 @@ int proc_alloc() {
             return proc_nprocs; // Return the new process ID
         }
 
-//     FATAL("proc_alloc: reach the limit of %d processes", MAX_NPROCESS); // If no process slot is available, raise a fatal error
-// }
+    FATAL("proc_alloc: reach the limit of %d processes", MAX_NPROCESS); // If no process slot is available, raise a fatal error
+}
 
 
 
