@@ -23,6 +23,35 @@
 void ctx_start(void** old_sp, void* new_sp);
 void ctx_switch(void** old_sp, void* new_sp);
 
+//Implemented the C functions ctx_start and ctx_switch based on assembly code in grass/context.S.
+// typedef struct {
+//     jmp_buf env;
+//     void *stack_ptr;
+// } context;
+
+// void ctx_start(context *old_context, context *new_context) {
+//     // Save the current execution context
+//     if (setjmp(old_context->env) == 0) {
+//         // Store the current stack pointer
+//         old_context->stack_ptr = &old_context;
+
+//         // Switch to the new context
+//         longjmp(new_context->env, 1);
+//     }
+// }
+
+// void ctx_switch(context *old_context, context *new_context) {
+//     // Save the current execution context
+//     if (setjmp(old_context->env) == 0) {
+//         // Store the current stack pointer
+//         old_context->stack_ptr = &old_context;
+
+//         // Switch to the new context
+//         longjmp(new_context->env, 1);
+//     }
+// }
+
+
 /** Forward declarations for thread functions **/
 void thread_exit();
 
