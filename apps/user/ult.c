@@ -277,3 +277,51 @@ int main() {
     return 0;
 }
 
+// static void producer(void *arg) {
+//     char *messages[] = {"message1", "message2", "message3"};
+//     for (int i = 0; i < 3; i++) {
+//         sema_dec(&s_empty);
+//         strcpy(slots[in], messages[i]); // Copy the message to the slot
+//         in = (in + 1) % NSLOTS;
+//         sema_inc(&s_full);
+//     }
+//     thread_exit(); // Exit the thread after producing messages
+// }
+
+// static void consumer(void *arg) {
+//     char buf[50]; // Buffer to store received message
+//     for (int i = 0; i < 3; i++) {
+//         sema_dec(&s_full);
+//         strcpy(buf, slots[out]); // Copy the message from the slot
+//         out = (out + 1) % NSLOTS;
+//         printf("%s: got '%s'\n", (char*)arg, buf);
+//         sema_inc(&s_empty);
+//     }
+//     thread_exit(); // Exit the thread after consuming messages
+// }
+
+// int main() {
+//     thread_init(); // Initialize threading system
+//     sema_init(&s_full, 0); // Initialize full semaphore with 0 (buffer is initially empty)
+//     sema_init(&s_empty, NSLOTS); // Initialize empty semaphore with the number of slots
+
+//     // Initialize slots
+//     for (int i = 0; i < NSLOTS; i++) {
+//         slots[i] = malloc(50 * sizeof(char)); // Allocate memory for each slot
+//     }
+
+//     // Create producer and consumer threads
+//     thread_create(producer, "Producer");
+//     thread_create(consumer, "Consumer 1");
+//     thread_create(consumer, "Consumer 2");
+
+//     // Start the first thread (will not return)
+//     ctx_start(&threads[0].env, threads[0].arg);
+
+//     // Free allocated memory for slots (this part will not be reached in this example)
+//     for (int i = 0; i < NSLOTS; i++) {
+//         free(slots[i]);
+//     }
+
+//     return 0;
+// }
