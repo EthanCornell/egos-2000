@@ -129,18 +129,32 @@ void pagetable_identity_mapping(int pid) {
 int page_table_map(int pid, int page_no, int frame_id) {
     if (pid >= 32) FATAL("page_table_map: pid too large");
 
-    /* Student's code goes here (page table translation). */
+    /* Check if page tables for pid do not exist, build the tables */
+    if (!pid_to_pagetable_base[pid]) {
+        pagetable_identity_mapping(pid);
+    }
 
-    /* Remove the following line of code and, instead,
-     * (1) if page tables for pid do not exist, build the tables;
-     * (2) if page tables for pid exist, update entries of the tables
-     *
-     * Feel free to call or modify the two helper functions:
-     * pagetable_identity_mapping() and setup_identity_region()
-     */
-    soft_tlb_map(pid, page_no, frame_id);
+    /* Calculate virtual page number (VPN) components */
+    int vpn1 = page_no >> 10;
+    int vpn0 = page_no & 0x3FF;
 
-    /* Student's code ends here. */
+    /* Fetch or create root page table */
+    unsigned int *root = pid_to_pagetable_base[pid];
+    unsigned int *leaf;
+
+    if (root[vpn1] & 0x1) {
+        leaf = (void*)((root[vpn1] << 2) & 0xFFFFF000);
+    } else {
+        earth->mmu_alloc(&frame_id, (void**)&leaf);
+        table[frame_id].pid = pid;
+        memset(leaf, 0, PAGE_SIZE);
+        root[vpn1] = ((unsigned int)leaf >> 2) | 0x1;
+    }
+
+    /* Map the frame in the leaf page table */
+    leaf[vpn0] = (frame_id << 2) | USER_RWX;
+
+    return 0;   // Indicating success
 }
 
 int page_table_switch(int pid) {
