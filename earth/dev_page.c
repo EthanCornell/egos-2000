@@ -28,7 +28,7 @@ struct cache_frame_info {
     bool dirty;    // Flag to indicate if the frame is dirty
 };
 
-struct cache_frame_info cache_info[ARTY_CACHED_NFRAMES];
+struct cache_frame_info cache_info[ARTY_CACHED_NFRAMES]; // Assuming this array is already populated with frame information
 int cache_slots[ARTY_CACHED_NFRAMES]; // Array to keep track of cache slots, with size based on the defined number of cache frames.
 char *pages_start = (void*)FRAME_CACHE_START; // Pointer to the start of the frame cache memory area.
 int last_used[ARTY_CACHED_NFRAMES]; // Array to keep track of the last used time for each slot. last_used array stores the time when each cache slot was last used.
@@ -65,6 +65,17 @@ void update_lru(int slot_idx) {
     }
 }
 
+
+
+// Function to find the cache slot for a given frame ID
+int find_cache_slot(int frame_id) {
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        if (cache_info[i].frame_id == frame_id) {
+            return i; // Return the index of the slot containing the frame ID
+        }
+    }
+    return -1; // Return -1 if no matching frame ID is found
+}
 
 //Random Eviction Strategy: Random eviction can potentially evict pages that are frequently accessed, leading to more cache misses.
 // static int cache_eviction() {        // Function to handle cache eviction.
