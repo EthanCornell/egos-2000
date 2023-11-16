@@ -194,10 +194,25 @@ static void proc_recv(struct syscall *sc) {
     proc_yield();
 }
 
+
 static void proc_syscall() {
+    // Validate the SYSCALL_ARG to ensure it is not null or invalid.
+    if (SYSCALL_ARG == NULL) {
+        FATAL("proc_syscall: SYSCALL_ARG is null");
+        return;
+    }
+
     struct syscall *sc = (struct syscall*)SYSCALL_ARG;
 
+    // Check if the syscall structure is valid
+    if (sc == NULL) {
+        FATAL("proc_syscall: Invalid syscall structure");
+        return;
+    }
+
     int type = sc->type;
+
+    // Initialize the return value and reset the syscall type
     sc->retval = 0;
     sc->type = SYS_UNUSED;
     *((int*)0x2000000) = 0;
@@ -213,3 +228,24 @@ static void proc_syscall() {
         FATAL("proc_syscall: got unknown syscall type=%d", type);
     }
 }
+
+
+// static void proc_syscall() {
+//     struct syscall *sc = (struct syscall*)SYSCALL_ARG;
+
+//     int type = sc->type;
+//     sc->retval = 0;
+//     sc->type = SYS_UNUSED;
+//     *((int*)0x2000000) = 0;
+
+//     switch (type) {
+//     case SYS_RECV:
+//         proc_recv(sc);
+//         break;
+//     case SYS_SEND:
+//         proc_send(sc);
+//         break;
+//     default:
+//         FATAL("proc_syscall: got unknown syscall type=%d", type);
+//     }
+// }
