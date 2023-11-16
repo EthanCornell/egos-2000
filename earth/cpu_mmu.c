@@ -144,15 +144,19 @@ int page_table_map(int pid, int page_no, int frame_id) {
 }
 
 int page_table_switch(int pid) {
-    /* Student's code goes here (page table translation). */
+    if (pid >= 32) FATAL("page_table_switch: pid too large");
 
-    /* Remove the following line of code and, instead,
-     * modify the page table base register (satp) similar to
-     * the code in mmu_init(); Remember to use the pid argument
-     */
-    soft_tlb_switch(pid);
+    /* Check if page tables for pid exist */
+    if (!pid_to_pagetable_base[pid]) {
+        FATAL("page_table_switch: page tables not initialized for pid");
+    }
 
-    /* Student's code ends here. */
+    unsigned int *root = pid_to_pagetable_base[pid];
+
+    /* Update satp register with the base address of the page table */
+    asm("csrw satp, %0" ::"r"(((unsigned int)root >> 12) | (1 << 31)));
+
+    return 0;   // Indicating success
 }
 
 /* MMU Initialization */
