@@ -168,23 +168,42 @@ static void proc_send(struct syscall *sc) {
     sc->retval = -1;
 }
 
+
 static void proc_recv(struct syscall *sc) {
+    // Validate the syscall structure to ensure it is not null.
+    if (sc == NULL) {
+        FATAL("proc_recv: Invalid syscall structure");
+        return;
+    }
+
     int sender = -1;
-    for (int i = 0; i < MAX_NPROCESS; i++)
+    for (int i = 0; i < MAX_NPROCESS; i++) {
         if (proc_set[i].status == PROC_WAIT_TO_SEND &&
-            proc_set[i].receiver_pid == curr_pid)
+            proc_set[i].receiver_pid == curr_pid) {
             sender = proc_set[i].pid;
+            break;
+        }
+    }
 
     if (sender == -1) {
+        // No sender found, set current process status to waiting to receive
         curr_status = PROC_WAIT_TO_RECV;
     } else {
         /* Copy message from sender to kernel stack */
         struct sys_msg tmp;
         earth->mmu_switch(sender);
+        // Consider adding error checking after mmu_switch if applicable
+
+        // Ensure that memory copying is done safely
+        if (&sc->msg == NULL) {
+            FATAL("proc_recv: Message structure is invalid");
+            return;
+        }
         memcpy(&tmp, &sc->msg, sizeof(tmp));
 
         /* Copy message from kernel stack to receiver */
         earth->mmu_switch(curr_pid);
+        // Again, consider error checking after mmu_switch if necessary
         memcpy(&sc->msg, &tmp, sizeof(tmp));
 
         /* Set sender process as runnable */
@@ -193,6 +212,34 @@ static void proc_recv(struct syscall *sc) {
 
     proc_yield();
 }
+
+
+
+// static void proc_recv(struct syscall *sc) {
+//     int sender = -1;
+//     for (int i = 0; i < MAX_NPROCESS; i++)
+//         if (proc_set[i].status == PROC_WAIT_TO_SEND &&
+//             proc_set[i].receiver_pid == curr_pid)
+//             sender = proc_set[i].pid;
+
+//     if (sender == -1) {
+//         curr_status = PROC_WAIT_TO_RECV;
+//     } else {
+//         /* Copy message from sender to kernel stack */
+//         struct sys_msg tmp;
+//         earth->mmu_switch(sender);
+//         memcpy(&tmp, &sc->msg, sizeof(tmp));
+
+//         /* Copy message from kernel stack to receiver */
+//         earth->mmu_switch(curr_pid);
+//         memcpy(&sc->msg, &tmp, sizeof(tmp));
+
+//         /* Set sender process as runnable */
+//         proc_set_runnable(sender);
+//     }
+
+//     proc_yield();
+// }
 
 
 static void proc_syscall() {
