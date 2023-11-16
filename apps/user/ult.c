@@ -135,59 +135,70 @@ void thread_exit() {
 // }
 
 /** Semaphore functions **/
-
+// Define a constant for the maximum number of threads that can wait on a semaphore
 #define MAX_WAITING_THREADS 10
 
+// Define the structure of a semaphore
 struct sema {
-    int count;
-    int waiting_threads[MAX_WAITING_THREADS];
-    int num_waiting;
+    int count;  // The count represents the current value of the semaphore
+    int waiting_threads[MAX_WAITING_THREADS];  // Array to store the IDs of waiting threads
+    int num_waiting;  // The number of threads currently waiting on this semaphore
 };
 
+// Function to initialize a semaphore
 void sema_init(struct sema *sema, unsigned int count) {
-    sema->count = count;
-    sema->num_waiting = 0;
+    sema->count = count;  // Set the semaphore's count to the specified value
+    sema->num_waiting = 0;  // Initially, no threads are waiting
+    // Initialize the waiting threads array with -1, indicating no thread is waiting
     for (int i = 0; i < MAX_WAITING_THREADS; i++) {
-        sema->waiting_threads[i] = -1; // Initialize to an invalid thread index
+        sema->waiting_threads[i] = -1; 
     }
 }
 
+// Function to increment (signal) the semaphore
 void sema_inc(struct sema *sema) {
-    sema->count++;
+    sema->count++;  // Increment the semaphore count
+    // Check if there are any threads waiting for this semaphore
     if (sema->num_waiting > 0) {
-        // Since we don't have thread_mark_ready, we'll simply
-        // remove the thread from the waiting list. This thread
-        // will check the semaphore status again when it gets CPU time.
+        // Shift all waiting threads up in the array to fill the gap
+        // after removing the first thread in the waiting list
         for (int i = 0; i < sema->num_waiting - 1; i++) {
             sema->waiting_threads[i] = sema->waiting_threads[i + 1];
         }
-        sema->num_waiting--;
+        sema->num_waiting--;  // Decrement the number of waiting threads
 
-        // Optionally, you might yield here to give other threads a chance
-        // to run immediately, but this depends on your scheduler's behavior
-        thread_yield();
-
+        // Yield the current thread to allow other threads (including the one just removed
+        // from the waiting list) to get CPU time and check the semaphore
+        thread_yield();  
     }
 }
 
+// Function to decrement (wait) the semaphore
 void sema_dec(struct sema *sema) {
+    // Continuously check the semaphore
     while (true) {
+        // If the semaphore count is greater than zero, it means the resource is available
         if (sema->count > 0) {
-            sema->count--;
-            break;
+            sema->count--;  // Decrement the semaphore count, indicating resource acquisition
+            break;  // Exit the loop as the semaphore has been successfully decremented
         }
 
+        // If the waiting list is not full
         if (sema->num_waiting < MAX_WAITING_THREADS) {
+            // Add the current thread to the waiting list
             sema->waiting_threads[sema->num_waiting++] = current_thread_idx;
-            thread_yield(); // Yield the thread to allow others to run
+            // Yield the thread to allow others to run
+            thread_yield(); 
         } else {
-            // Waiting list is full, so continuously yield until there's space
+            // If the waiting list is full, continuously yield
+            // until there's space in the waiting list
             while (sema->num_waiting >= MAX_WAITING_THREADS) {
                 thread_yield();
             }
         }
     }
 }
+
 
 
 // struct sema {
