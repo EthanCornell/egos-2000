@@ -136,25 +136,79 @@ void thread_exit() {
 
 /** Semaphore functions **/
 
+#define MAX_WAITING_THREADS 10
+
 struct sema {
-    /* Student's code goes here. */
+    int count;
+    int waiting_threads[MAX_WAITING_THREADS];
+    int num_waiting;
 };
 
-void sema_init(struct sema *sema, unsigned int count){
-    /* Student's code goes here. */
+void sema_init(struct sema *sema, unsigned int count) {
+    sema->count = count;
+    sema->num_waiting = 0;
+    for (int i = 0; i < MAX_WAITING_THREADS; i++) {
+        sema->waiting_threads[i] = -1; // Initialize to an invalid thread index
+    }
 }
 
-void sema_inc(struct sema *sema){
-    /* Student's code goes here. */
+void sema_inc(struct sema *sema) {
+    sema->count++;
+    if (sema->num_waiting > 0) {
+        // Since we don't have thread_mark_ready, we'll simply
+        // remove the thread from the waiting list. This thread
+        // will check the semaphore status again when it gets CPU time.
+        for (int i = 0; i < sema->num_waiting - 1; i++) {
+            sema->waiting_threads[i] = sema->waiting_threads[i + 1];
+        }
+        sema->num_waiting--;
+
+        // Optionally, you might yield here to give other threads a chance
+        // to run immediately, but this depends on your scheduler's behavior
+        thread_yield();
+
+    }
 }
 
-void sema_dec(struct sema *sema){
-    /* Student's code goes here. */
+void sema_dec(struct sema *sema) {
+    while (true) {
+        if (sema->count > 0) {
+            sema->count--;
+            break;
+        }
+
+        if (sema->num_waiting < MAX_WAITING_THREADS) {
+            sema->waiting_threads[sema->num_waiting++] = current_thread_idx;
+            thread_yield(); // Yield the thread to allow others to run
+        } else {
+            // Waiting list is full, so continuously yield until there's space
+            while (sema->num_waiting >= MAX_WAITING_THREADS) {
+                thread_yield();
+            }
+        }
+    }
 }
 
-int sema_release(struct sema *sema){
-    /* Student's code goes here. */
-}
+
+// struct sema {
+//     /* Student's code goes here. */
+// };
+
+// void sema_init(struct sema *sema, unsigned int count){
+//     /* Student's code goes here. */
+// }
+
+// void sema_inc(struct sema *sema){
+//     /* Student's code goes here. */
+// }
+
+// void sema_dec(struct sema *sema){
+//     /* Student's code goes here. */
+// }
+
+// int sema_release(struct sema *sema){
+//     /* Student's code goes here. */
+// }
 
 /** Producer and consumer functions **/
 
