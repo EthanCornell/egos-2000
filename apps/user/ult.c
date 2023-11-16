@@ -14,6 +14,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#define STACK_SIZE 16 * 1024 // Example stack size, adjust as necessary
+//uses setjmp and longjmp for context switching. When setjmp is called, it saves the current environment (including the instruction pointer and stack pointer) in jmp_buf. 
+//Later, longjmp is used to restore this environment, effectively switching the context.
+#define MAX_THREADS 10
+
 /** These two functions are defined in grass/context.S **/
 void ctx_start(void** old_sp, void* new_sp);
 void ctx_switch(void** old_sp, void* new_sp);
@@ -22,16 +27,13 @@ void ctx_switch(void** old_sp, void* new_sp);
 void thread_exit();
 
 /** Multi-threading functions **/
-//uses setjmp and longjmp for context switching. When setjmp is called, it saves the current environment (including the instruction pointer and stack pointer) in jmp_buf. 
-//Later, longjmp is used to restore this environment, effectively switching the context.
-#define MAX_THREADS 10
-
 // Thread structure
 struct thread {
-    void (*function)(void*); // Pointer to the thread function
-    void *arg;               // Argument to be passed to the thread function
-    bool is_active;          // Flag to indicate whether the thread is active
-    jmp_buf env;             // Environment buffer to store the thread context for context switching
+    void (*function)(void*);
+    void *arg;
+    bool is_active;
+    jmp_buf env; // Environment buffer to store the thread context
+    void *stack; // Pointer to the thread's stack
 };
 
 struct thread threads[MAX_THREADS]; // Array of threads
@@ -40,7 +42,8 @@ int current_thread_idx = -1;        // Index of the currently running thread, -1
 // Initialize thread management
 void thread_init() {
     for (int i = 0; i < MAX_THREADS; ++i) {
-        threads[i].is_active = false; // Initialize all threads as inactive
+        threads[i].is_active = false;
+        threads[i].stack = NULL;
     }
 }
 
@@ -53,59 +56,123 @@ void ctx_entry() {
     }
 }
 
-// Create a new thread
+
+
+// Modified thread_create function
 void thread_create(void (*f)(void *), void *arg) {
     for (int i = 0; i < MAX_THREADS; ++i) {
         if (!threads[i].is_active) {
-            // Find an inactive thread slot and set up the thread
             threads[i].function = f;
             threads[i].arg = arg;
             threads[i].is_active = true;
 
-            if (setjmp(threads[i].env) == 0) {
-                // Save the current context (like a bookmark) and return to continue execution
+            // Allocate memory for the new thread's stack
+            void* stack = malloc(STACK_SIZE);
+            if (stack == NULL) {
+                // Handle memory allocation failure
+                threads[i].is_active = false;
                 return;
-            } else {
-                // This part is executed when longjmp is called, starting the thread function
-                threads[i].function(threads[i].arg);
-                thread_exit(); // Exit the thread after the function completes
             }
+
+            // Calculate the top of the stack (assuming the stack grows downwards)
+            void* stack_top = (void *)((char *)stack + STACK_SIZE);
+
+            // Initialize the stack pointer for the new thread (platform-specific)
+            // Here, you might need to store some initial values or registers on the stack
+            // depending on the architecture and calling convention
+
+            // Call ctx_start with the address of the current thread's jmp_buf and the new stack pointer
+            ctx_start((void**)&threads[i].env, stack_top);
+
+            return;
         }
     }
 }
 
-// Yield execution to another thread
+
+// Modified thread_yield function
 void thread_yield() {
     int current_thread = current_thread_idx;
-    int next_thread = (current_thread + 1) % MAX_THREADS; // Determine the next thread to run
-    current_thread_idx = next_thread; // Update the index of the current thread
+    int next_thread = (current_thread + 1) % MAX_THREADS;
+    current_thread_idx = next_thread;
 
     if (threads[current_thread].is_active) {
-        if (setjmp(threads[current_thread].env) == 0) {
-            // Save the current thread's context and switch to the next thread
-            longjmp(threads[next_thread].env, 1);
-        }
+        ctx_switch((void**)&threads[current_thread].env, &threads[next_thread].env);
     } else {
-        // If the current thread is not active, just switch to the next thread
-        longjmp(threads[next_thread].env, 1);
+        ctx_switch(NULL, &threads[next_thread].env);
     }
 }
 
-// Exit the current thread
+// Modified thread_exit function
 void thread_exit() {
     if (current_thread_idx >= 0) {
-        // Mark the current thread as inactive
+        free(threads[current_thread_idx].stack); // Free the stack memory
         threads[current_thread_idx].is_active = false;
-        // Loop to find the next active thread to switch to
+        threads[current_thread_idx].stack = NULL;
+
         for (int i = (current_thread_idx + 1) % MAX_THREADS; i != current_thread_idx; i = (i + 1) % MAX_THREADS) {
             if (threads[i].is_active) {
-                // Switch to the next active thread
                 current_thread_idx = i;
-                longjmp(threads[i].env, 1); // Jump to the next thread's saved context
+                ctx_switch((void**)&threads[current_thread_idx].env, &threads[i].env);
+                return;
             }
         }
     }
 }
+
+// Create a new thread
+// void thread_create(void (*f)(void *), void *arg) {
+//     for (int i = 0; i < MAX_THREADS; ++i) {
+//         if (!threads[i].is_active) {
+//             // Find an inactive thread slot and set up the thread
+//             threads[i].function = f;
+//             threads[i].arg = arg;
+//             threads[i].is_active = true;
+
+//             if (setjmp(threads[i].env) == 0) {
+//                 // Save the current context (like a bookmark) and return to continue execution
+//                 return;
+//             } else {
+//                 // This part is executed when longjmp is called, starting the thread function
+//                 threads[i].function(threads[i].arg);
+//                 thread_exit(); // Exit the thread after the function completes
+//             }
+//         }
+//     }
+// }
+
+// // Yield execution to another thread
+// void thread_yield() {
+//     int current_thread = current_thread_idx;
+//     int next_thread = (current_thread + 1) % MAX_THREADS; // Determine the next thread to run
+//     current_thread_idx = next_thread; // Update the index of the current thread
+
+//     if (threads[current_thread].is_active) {
+//         if (setjmp(threads[current_thread].env) == 0) {
+//             // Save the current thread's context and switch to the next thread
+//             longjmp(threads[next_thread].env, 1);
+//         }
+//     } else {
+//         // If the current thread is not active, just switch to the next thread
+//         longjmp(threads[next_thread].env, 1);
+//     }
+// }
+
+// // Exit the current thread
+// void thread_exit() {
+//     if (current_thread_idx >= 0) {
+//         // Mark the current thread as inactive
+//         threads[current_thread_idx].is_active = false;
+//         // Loop to find the next active thread to switch to
+//         for (int i = (current_thread_idx + 1) % MAX_THREADS; i != current_thread_idx; i = (i + 1) % MAX_THREADS) {
+//             if (threads[i].is_active) {
+//                 // Switch to the next active thread
+//                 current_thread_idx = i;
+//                 longjmp(threads[i].env, 1); // Jump to the next thread's saved context
+//             }
+//         }
+//     }
+// }
 
 
 
