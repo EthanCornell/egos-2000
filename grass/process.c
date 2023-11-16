@@ -12,39 +12,47 @@
 #include "syscall.h"
 #include <string.h>
 
+// Function to set the status of a process with a given process ID (pid)
 static void proc_set_status(int pid, int status) {
-    for (int i = 0; i < MAX_NPROCESS; i++)
-        if (proc_set[i].pid == pid) proc_set[i].status = status;
+    for (int i = 0; i < MAX_NPROCESS; i++) // Loop through all processes
+        if (proc_set[i].pid == pid) proc_set[i].status = status; // If the process ID matches, set its status
 }
 
+// Set the status of a process to PROC_READY
 void proc_set_ready(int pid) { proc_set_status(pid, PROC_READY); }
+
+// Set the status of a process to PROC_RUNNING
 void proc_set_running(int pid) { proc_set_status(pid, PROC_RUNNING); }
+
+// Set the status of a process to PROC_RUNNABLE
 void proc_set_runnable(int pid) { proc_set_status(pid, PROC_RUNNABLE); }
 
+// Allocate a new process
 int proc_alloc() {
-    static int proc_nprocs = 0;
-    for (int i = 0; i < MAX_NPROCESS; i++)
-        if (proc_set[i].status == PROC_UNUSED) {
-            proc_set[i].pid = ++proc_nprocs;
-            proc_set[i].status = PROC_LOADING;
-            return proc_nprocs;
+    static int proc_nprocs = 0; // Static counter for the number of processes
+    for (int i = 0; i < MAX_NPROCESS; i++) // Loop through all processes
+        if (proc_set[i].status == PROC_UNUSED) { // Find an unused process slot
+            proc_set[i].pid = ++proc_nprocs; // Assign a new process ID
+            proc_set[i].status = PROC_LOADING; // Set the process status to loading
+            return proc_nprocs; // Return the new process ID
         }
 
-    FATAL("proc_alloc: reach the limit of %d processes", MAX_NPROCESS);
+    FATAL("proc_alloc: reach the limit of %d processes", MAX_NPROCESS); // If no process slot is available, raise a fatal error
 }
 
+// Free a process with a given process ID
 void proc_free(int pid) {
-    if (pid != -1) {
-        earth->mmu_free(pid);
-        proc_set_status(pid, PROC_UNUSED);
+    if (pid != -1) { // If a specific process ID is provided
+        earth->mmu_free(pid); // Free the memory associated with the process
+        proc_set_status(pid, PROC_UNUSED); // Set the process status to unused
         return;
     }
 
-    /* Free all user applications */
-    for (int i = 0; i < MAX_NPROCESS; i++)
+    // If no specific process ID is provided, free all user applications
+    for (int i = 0; i < MAX_NPROCESS; i++) // Loop through all processes
         if (proc_set[i].pid >= GPID_USER_START &&
-            proc_set[i].status != PROC_UNUSED) {
-            earth->mmu_free(proc_set[i].pid);
-            proc_set[i].status = PROC_UNUSED;
+            proc_set[i].status != PROC_UNUSED) { // If the process is a user application and not unused
+            earth->mmu_free(proc_set[i].pid); // Free the memory associated with the process
+            proc_set[i].status = PROC_UNUSED; // Set the process status to unused
         }
 }
