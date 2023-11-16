@@ -43,13 +43,14 @@ void cache_info_init() {
     }
 }
 
+// Function to find the cache slot for a given frame ID
 int find_cache_slot(int frame_id) {
     for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
         if (cache_info[i].frame_id == frame_id) {
-            return i; // Cache slot found
+            return i; // Cache slot found, return the index of the slot containing the frame ID
         }
     }
-    return -1; // Cache slot not found
+    return -1; // Cache slot not found, return -1 if no matching frame ID is found
 }
 
 void mark_dirty(int slot_idx) {
@@ -65,17 +66,6 @@ void update_lru(int slot_idx) {
     }
 }
 
-
-
-// Function to find the cache slot for a given frame ID
-int find_cache_slot(int frame_id) {
-    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
-        if (cache_info[i].frame_id == frame_id) {
-            return i; // Return the index of the slot containing the frame ID
-        }
-    }
-    return -1; // Return -1 if no matching frame ID is found
-}
 
 //Random Eviction Strategy: Random eviction can potentially evict pages that are frequently accessed, leading to more cache misses.
 // static int cache_eviction() {        // Function to handle cache eviction.
