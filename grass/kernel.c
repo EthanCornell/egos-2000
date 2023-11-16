@@ -22,13 +22,20 @@
 void excp_entry(int id) {
     /* Student's code goes here (system call and memory exception). */
 
-    /* If id is for system call, handle the system call and return */
-
-    /* Otherwise, kill the process if curr_pid is a user application */
-
-    /* Student's code ends here. */
+    if (id == EXCP_ID_ECALL_U) {
+        // If id is for system call, handle the system call and return
+        proc_syscall();
+        return;
+    } else if (id == EXCP_ID_ECALL_M && curr_pid >= GPID_USER_START) {
+        // Kill the process if curr_pid is a user application
+        // Handle unauthorized memory access or other exceptions here
+        INFO("process %d killed due to exception", curr_pid);
+        asm("csrw mepc, %0" ::"r"(0x800500C));
+        return;
+    }
     FATAL("excp_entry: kernel got exception %d", id);
 }
+
 
 #define INTR_ID_SOFT       3
 #define INTR_ID_TIMER      7
