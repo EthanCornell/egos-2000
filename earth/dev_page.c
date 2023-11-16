@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* Author: Yunhao Zhang
+/* Author: Yunhao Zhang & I-Hsuan Huang
  * Description: a 1MB (256*4KB) paging device
  * for QEMU, 256 physical frames start at address FRAME_CACHE_START
  * for Arty, 28 physical frames are cached at address FRAME_CACHE_START
