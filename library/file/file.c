@@ -38,10 +38,10 @@
  * Convenient for all operations. See "file.h" for field details.
  */
 struct treedisk_snapshot {
-    union treedisk_block superblock; 
-    union treedisk_block inodeblock; 
-    block_no inode_blockno;
-    struct treedisk_inode *inode;
+    union treedisk_block superblock;   // Superblock of the file system
+    union treedisk_block inodeblock;   // Block containing the inode
+    block_no inode_blockno;            // Block number of the inode
+    struct treedisk_inode *inode;      // Pointer to the inode
 };
 
 /* The state of a virtual inode store, which is identified by an inode number.
@@ -55,12 +55,13 @@ struct treedisk_state {
 static unsigned int log_rpb;                    /* log2(REFS_PER_BLOCK) */
 static block_t null_block;			/* a block filled with null bytes */
 
+// Define a function for handling panic situations
 static void panic(const char *s){
 #ifdef MKFS
-    fprintf(stderr, "%s", s);
-    exit(1);
+    fprintf(stderr, "%s", s); // If MKFS is defined, print error message to stderr
+    exit(1);                  // Exit the program with error code 1
 #else 
-    FATAL(s);
+    FATAL(s);                 // Otherwise, call a custom fatal error handling function
 #endif
 }
 
@@ -69,9 +70,9 @@ static void panic(const char *s){
  */
 static block_no log_shift_r(block_no x, unsigned int nbits){
     if (nbits >= sizeof(block_no) * 8) {
-        return 0;
+        return 0;   // If shifting by more or equal bits than the size of block_no, return 0
     }
-    return x >> nbits;
+    return x >> nbits; // Otherwise, perform the right shift
 }
 
 /* Get a snapshot of the file system, including the superblock and the block
@@ -79,26 +80,23 @@ static block_no log_shift_r(block_no x, unsigned int nbits){
  */
 static int treedisk_get_snapshot(struct treedisk_snapshot *snapshot,
                                  struct treedisk_state *ts, unsigned int inode_no){
-    /* Get the superblock.
-     */
+    // Get the superblock
     if ((*ts->below->read)(ts->below, ts->below_ino, 0, (block_t *) &snapshot->superblock) < 0)
-        return -1;
+        return -1; // Return -1 on failure
 
-    /* Check the inode number.
-     */
+    // Check if the inode number is valid
     if (inode_no >= snapshot->superblock.superblock.n_inodeblocks * INODES_PER_BLOCK) {
         printf("!!TDERR: inode number too large %u %u\n", inode_no, snapshot->superblock.superblock.n_inodeblocks);
-        return -1;
+        return -1; // Return -1 if inode number is too large
     }
 
-    /* Find the inode.
-     */
+    // Find and set the inode
     snapshot->inode_blockno = 1 + inode_no / INODES_PER_BLOCK;
     if ((*ts->below->read)(ts->below, ts->below_ino, snapshot->inode_blockno, (block_t *) &snapshot->inodeblock) < 0)
-        return -1;
+        return -1; // Return -1 on failure
 
     snapshot->inode = &snapshot->inodeblock.inodeblock.inodes[inode_no % INODES_PER_BLOCK];
-    return 0;
+    return 0; // Return 0 on success
 }
 
 /* Allocate a block from the free list.
