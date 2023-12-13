@@ -107,7 +107,7 @@ void thread_create(void (*f)(void *), void *arg) {
             void* stack_top = (void *)((char *)stack + STACK_SIZE);
 
             // Initialize the stack pointer for the new thread (platform-specific)
-            // Here, you might need to store some initial values or registers on the stack
+            // Here, we might need to store some initial values or registers on the stack
             // depending on the architecture and calling convention
 
             // Call ctx_start with the address of the current thread's jmp_buf and the new stack pointer
