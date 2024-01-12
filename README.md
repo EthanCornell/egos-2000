@@ -104,6 +104,27 @@ In the `file.c` file, extensive optimizations were applied to the file system, w
 
 These optimizations collectively resulted in enhanced file system performance, reduced latency for write operations, and improved overall system responsiveness.
 
+## Cache Management and Concurrency Control
+
+In the `dev_page.c` file, the work was undertaken to enhance cache management and ensure thread safety in a multi-threaded environment, resulting in improved system performance, efficiency, and reliability.
+
+### Cache Management:
+
+- **Enhanced Cache Eviction Policy:** Optimized cache eviction policies to improve system efficiency, reducing unnecessary disk I/O.
+
+- **Efficient Cache Slot Finding:** Developed an efficient cache slot finding algorithm (Writeback-Aware Cache) within the `paging_write` function, improving cache management.
+
+- **Streamlined Paging Operations:** Streamlined the `paging_read` function, optimizing cache slot search and implementing lazy loading to minimize disk I/O.
+
+- **Memory Operation Efficiency:** Utilized `memcpy` judiciously for memory operations, reducing system overhead and enhancing performance.
+
+### Concurrency Control:
+
+- **Thread Safety Implementation:** Implemented robust concurrency control mechanisms using pthread mutexes, safeguarding critical sections in cache operations.
+
+- **Thorough Testing:** Conducted comprehensive testing to ensure smooth integration and prevent deadlocks, significantly enhancing system reliability and stability.
+
+These actions collectively resulted in a improvement in cache management efficiency, reduced disk I/O, enhanced system performance, and ensured thread safety and data integrity in multi-threaded scenarios.
 
 
 
