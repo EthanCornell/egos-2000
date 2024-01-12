@@ -246,13 +246,13 @@ char* paging_read(int frame_id, int alloc_only) {
 // int lru_counter = 0; // Counter to simulate a timestamp for LRU
 
 // Initializes cache frame info
-void cache_info_init() {
-    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
-        cache_info[i].frame_id = -1; // -1 indicates an empty slot
-        cache_info[i].last_used = 0;
-        cache_info[i].dirty = false;
-    }
-}
+// void cache_info_init() {
+//     for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+//         cache_info[i].frame_id = -1; // -1 indicates an empty slot
+//         cache_info[i].last_used = 0;
+//         cache_info[i].dirty = false;
+//     }
+// }
 
 // Function to find the cache slot for a given frame ID
 // int find_cache_slot(int frame_id) {
