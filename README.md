@@ -126,6 +126,39 @@ In the `dev_page.c` file, the work was undertaken to enhance cache management an
 
 These actions collectively resulted in a improvement in cache management efficiency, reduced disk I/O, enhanced system performance, and ensured thread safety and data integrity in multi-threaded scenarios.
 
+## Thread Management and Synchronization
+
+In the `ult.c` file, substantial work was undertaken to develop a Thread Management System, context switching mechanism, and advanced synchronization techniques for efficient multi-threading in a C-based project.
+
+### Thread Management:
+
+- **Thread Control Block:** Developed a Thread Control Block (TCB) to efficiently manage thread-related information.
+
+- **Critical Thread Functions:** Created and implemented critical thread management functions, including thread creation, yielding, and termination.
+
+- **Context Switching Mechanism:** Implemented a Context Switching Mechanism using `setjmp` and `longjmp` functions to ensure seamless context switching and effective thread state management for cooperative multitasking.
+
+- **Improved Performance:** Enhanced thread management, resulting in improved system performance and responsiveness.
+
+### Advanced Thread Management and Synchronization:
+
+- **Resilient System:** Built a resilient system for thread life-cycle management, including creation, context switching, and termination.
+
+- **Semaphore-Based Solutions:** Developed semaphore-based solutions for handling producer-consumer problems, ensuring safe multi-threaded operations and optimized resource use.
+
+- **Context Transition Management:** Engineered `ctx_start` and `ctx_switch` functions, extrapolated from assembly code, for managing thread context transitions using `setjmp` and `longjmp`.
+
+- **Dynamic Memory Management:** Constructed a comprehensive thread management framework with capabilities like `thread_create`, `thread_yield`, and `thread_exit`, integrating dynamic memory management for thread stacks.
+
+- **Semaphore Operations:** Implemented a `sema` struct for semaphore operations, crafting functions such as `sema_init`, `sema_inc`, and `sema_dec` for regulated access to shared resources in a multi-threaded environment.
+
+- **Producer-Consumer Handling:** Orchestrated producer-consumer processes using semaphores to efficiently handle shared buffers, ensuring synchronized operations between producers and consumers.
+
+- **Performance Enhancement:** Achieved a significant enhancement in the multi-threading mechanism, resulting in more effective context switching and thread administration.
+
+- **Resource Distribution:** Facilitated improved resource distribution among threads, leading to enhanced application performance and stability in multi-threaded contexts.
+
+This work provided profound expertise and hands-on experience in low-level thread management and inter-thread communication within C programming, ultimately contributing to a more robust and efficient multi-threaded system.
 
 
 ### Usages and Documentation
