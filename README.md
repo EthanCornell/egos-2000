@@ -90,11 +90,7 @@ In the `file.c` file, extensive optimizations were applied to the file system, w
 
 - **Minimize Internal Copying:** Avoided unnecessary data copying within functions, especially when dealing with indirect blocks.
 
-- **Direct I/O Strategies:** Implemented direct I/O strategies to reduce data copying and minimize system call overhead during file operations.
-
 - **Efficient Buffer Management:** Managed buffers efficiently for reading blocks, such as indirect blocks, to reduce memory operation overhead.
-
-- **Inode Updates:** Grouped inode updates to minimize the number of write operations, improving file system performance.
 
 ### Proposed Optimizations:
 
