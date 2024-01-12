@@ -42,6 +42,45 @@ Developed for [CS4411 at Cornell](https://www.cs.cornell.edu/courses/cs4411/2022
 egos-2000 also has a [special version](https://github.com/yhzhang0128/egos-2000/tree/ece4750) running on the Verilog processor from [ECE4750 at Cornell](https://github.com/cornell-ece4750).
 The goal is to make OS education more connected with computer architecture.
 
+
+## Main Change from Original Edition
+In this edition of egos-2000, I have introduced several significant changes and improvements compared to the original edition. Some of the main changes include:
+
+## CPU Memory Management Unit (MMU) Development
+
+In the `cpu_mmu.c` file, significant developments were made to enhance the Memory Management Unit (MMU) for our operating system. This work included the implementation of critical functions such as `setup_identity_region`, `pagetable_identity_mapping`, `page_table_map`, and MMU initialization.
+
+### Highlights:
+
+- **Setup Identity Region Function:** Implemented memory identity mapping using bitwise operations and managed virtual-to-physical address mappings, improving system stability and efficiency.
+
+- **Page Table Identity Mapping Function:** Developed identity mappings for various memory regions, including system-specific components, resulting in more efficient memory utilization.
+
+- **Page Table Map Function:** Created a function to link virtual pages to physical frames with precise page-to-frame mappings, reducing the risk of critical system errors.
+
+- **MMU Initialization Function** Successfully initialized the Memory Management Unit (MMU), managing physical memory protection (PMP) and memory translation mechanisms, contributing to enhanced system security and performance.
+
+These enhancements have led to a more robust MMU setup, improving system stability, security, and performance, ultimately reducing the likelihood of critical system errors.
+
+## Operating System Kernel Development
+
+In the `kernel.c` file, significant enhancements and optimizations were made to the operating system kernel, focusing on improving process scheduling, fault handling, and system calls to increase overall efficiency and reliability.
+
+### Highlights:
+
+- **Advanced Programming Techniques:** Leveraged advanced low-level C programming skills, including pointer manipulation, bit operations, and memory-mapped I/O, to optimize hardware interaction.
+
+- **Exception and Interrupt Handling:** Implemented robust exception and interrupt handling mechanisms, effectively managing various system exceptions and interrupts through functions like `excp_entry` and `intr_entry`.
+
+- **Process Scheduling and Context Switching:** Developed and refined process scheduling logic and context switching methods in `proc_yield` and `ctx_entry`, resulting in enhanced system efficiency.
+
+- **Inter-Process Communication (IPC):** Streamlined inter-process communication (IPC) mechanisms with the development of `proc_send` and `proc_recv`, facilitating efficient communication between processes.
+
+- **Hardware-Software Interface Management:** Managed the hardware-software interface by handling system register management, incorporating comprehensive error checking, and implementing debugging procedures.
+
+These enhancements and optimizations have led to improvements in system performance and reliability, contributing to a more robust and efficient operating system.
+
+
 ### Usages and Documentation
 
 For compiling and running egos-2000, please read [this document](references/USAGES.md).
