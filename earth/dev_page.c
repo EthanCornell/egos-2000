@@ -19,14 +19,13 @@
 
 #define ARTY_CACHED_NFRAMES 28
 #define NBLOCKS_PER_PAGE PAGE_SIZE / BLOCK_SIZE  /* 4KB / 512B == 8 */
-
+#define MAX_CACHE_SIZE 256  // Total cache size
+#define PRIVILEGED_PARTITION_SIZE 128  // Size of privileged partition
 
 int cache_slots[ARTY_CACHED_NFRAMES];
 char *pages_start = (void*)FRAME_CACHE_START;
 
-#define MAX_CACHE_SIZE 256  // Total cache size
-#define PRIVILEGED_PARTITION_SIZE 128  // Size of privileged partition
-
+//LFRU policy
 typedef struct cache_page {
     int frame_id;
     int access_frequency;
@@ -44,7 +43,11 @@ void initialize_cache() {
         cache[i].next = (i < MAX_CACHE_SIZE - 1) ? &cache[i + 1] : NULL;
         cache[i].prev = (i > 0) ? &cache[i - 1] : NULL;
     }
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        cache_slots[i] = -1;  // Indicates that the slot is initially empty
+    }
 }
+
 
 cache_page* find_page(int frame_id) {
     for (int i = 0; i < MAX_CACHE_SIZE; i++) {
@@ -91,8 +94,9 @@ void access_page(int frame_id) {
 }
 
 void evict_from_privileged() {
-    // Evict the least recently used page from the privileged partition
     cache_page* lru = &cache[PRIVILEGED_PARTITION_SIZE - 1];
+    int cache_index = lru->frame_id % ARTY_CACHED_NFRAMES; // Example calculation
+    cache_slots[cache_index] = -1; // Remove from cache_slots
     lru->frame_id = -1;  // Mark as empty
     lru->access_frequency = 0;
     privileged_count--;
@@ -115,7 +119,7 @@ void evict_from_unprivileged() {
 }
 
 
-//LFRU policy
+
 static int cache_eviction() {
     // Evict from the privileged partition if it's full
     if (privileged_count == PRIVILEGED_PARTITION_SIZE) {
@@ -149,22 +153,28 @@ int paging_invalidate_cache(int frame_id) {
 
 
 int paging_write(int frame_id, int page_no) {
-    // In a real implementation, you would write data to the page here
-    access_page(frame_id); // Simulate accessing the page to update its position in the cache
+    access_page(frame_id); // Update cache access pattern
+
+    // Simulate writing data to the page
+    int cache_index = frame_id % ARTY_CACHED_NFRAMES; // Example calculation
+    cache_slots[cache_index] = frame_id;
+    memcpy(pages_start + cache_index * PAGE_SIZE, (void*)(page_no << 12), PAGE_SIZE);
+
     return 0; // Success
 }
-
 
 char* paging_read(int frame_id, int alloc_only) {
     cache_page* page = find_page(frame_id);
     if (!page && !alloc_only) {
-        // If the page is not in cache and allocation only flag is not set, load it into cache
-        access_page(frame_id); // This will load the page into the cache
+        access_page(frame_id); // Load the page into the cache
         page = find_page(frame_id);
     }
     if (page) {
+        int cache_index = frame_id % ARTY_CACHED_NFRAMES; // Example calculation
+        cache_slots[cache_index] = frame_id;
+
         // In a real implementation, you would return a pointer to the page data here
-        return (char*)page; // Placeholder return value
+        return pages_start + cache_index * PAGE_SIZE; // Return pointer to the page data
     }
     return NULL; // Page not found
 }
