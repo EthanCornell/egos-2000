@@ -80,6 +80,32 @@ In the `kernel.c` file, significant enhancements and optimizations were made to 
 
 These enhancements and optimizations have led to improvements in system performance and reliability, contributing to a more robust and efficient operating system.
 
+## File System Optimization Using Zero-Copy Techniques
+
+In the `file.c` file, extensive optimizations were applied to the file system, with a focus on zero-copy techniques to improve overall system performance and responsiveness.
+
+### Key Points for Zero-Copy Optimization:
+
+- **Direct Write to Disk:** Implemented direct I/O strategies to write data directly from user-space memory buffers to the disk, reducing intermediate copies.
+
+- **Minimize Internal Copying:** Avoided unnecessary data copying within functions, especially when dealing with indirect blocks.
+
+- **Efficient Buffer Management:** Managed buffers efficiently for reading blocks, such as indirect blocks, to reduce memory operation overhead.
+
+### Proposed Optimizations:
+
+- **Direct Disk Writes:** Utilized direct I/O techniques for writing blocks to the disk, reducing unnecessary copying and improving efficiency.
+
+- **Optimized Indirect Block Handling:** Minimized the number of read and write operations for indirect blocks, improving I/O efficiency.
+
+- **Inode Updates:** Grouped inode updates to minimize write operations, enhancing file system performance.
+
+- **Error Handling and Recovery:** Implemented robust error handling, ensuring file system consistency and recovery in case of failures.
+
+These optimizations collectively resulted in enhanced file system performance, reduced latency for write operations, and improved overall system responsiveness.
+
+
+
 
 ### Usages and Documentation
 
