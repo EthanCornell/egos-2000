@@ -125,7 +125,7 @@ int paging_write(int frame_id, int page_no) {
 }
 
 // Original Policy: Immediate disk read for non-cached pages.
-// Improved Approach: Implemented lazy loading, where pages are loaded into the cache only if they are going to be used, minimizing unnecessary disk reads.
+// Improved Approach: Implemented lazy loading (Cache-aside), where pages are loaded into the cache only if they are going to be used, minimizing unnecessary disk reads.
 char* paging_read(int frame_id, int alloc_only) {
     pthread_mutex_lock(&cache_lock);
     if (earth->platform == QEMU) {
