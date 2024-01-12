@@ -153,31 +153,55 @@ int paging_invalidate_cache(int frame_id) {
 
 
 int paging_write(int frame_id, int page_no) {
+    char* src = (void*)(page_no << 12);
+
+    // Handling for QEMU platform
+    if (earth->platform == QEMU) {
+        memcpy(pages_start + frame_id * PAGE_SIZE, src, PAGE_SIZE);
+        return 0;
+    }
+
+    // Handling for non-QEMU platforms
     access_page(frame_id); // Update cache access pattern
 
-    // Simulate writing data to the page
-    int cache_index = frame_id % ARTY_CACHED_NFRAMES; // Example calculation
-    cache_slots[cache_index] = frame_id;
-    memcpy(pages_start + cache_index * PAGE_SIZE, (void*)(page_no << 12), PAGE_SIZE);
+    int cache_index = frame_id % ARTY_CACHED_NFRAMES; 
+    if (cache_slots[cache_index] == frame_id) {
+        memcpy(pages_start + cache_index * PAGE_SIZE, src, PAGE_SIZE);
+        return 0;
+    }
+
+    int free_idx = cache_eviction();
+    cache_slots[free_idx] = frame_id;
+    memcpy(pages_start + PAGE_SIZE * free_idx, src, PAGE_SIZE);
 
     return 0; // Success
 }
 
 char* paging_read(int frame_id, int alloc_only) {
-    cache_page* page = find_page(frame_id);
-    if (!page && !alloc_only) {
-        access_page(frame_id); // Load the page into the cache
-        page = find_page(frame_id);
+    // Handling for QEMU platform
+    if (earth->platform == QEMU) {
+        return pages_start + frame_id * PAGE_SIZE;
     }
-    if (page) {
-        int cache_index = frame_id % ARTY_CACHED_NFRAMES; // Example calculation
-        cache_slots[cache_index] = frame_id;
 
-        // In a real implementation, you would return a pointer to the page data here
-        return pages_start + cache_index * PAGE_SIZE; // Return pointer to the page data
+    // Handling for non-QEMU platforms
+    int free_idx = -1;
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        if (cache_slots[i] == -1 && free_idx == -1) free_idx = i;
+        if (cache_slots[i] == frame_id) return pages_start + PAGE_SIZE * i;
     }
-    return NULL; // Page not found
+
+    if (free_idx == -1) free_idx = cache_eviction();
+    cache_slots[free_idx] = frame_id;
+
+    if (!alloc_only) {
+        access_page(frame_id); // Load the page into the cache if not allocation only
+        earth->disk_read(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * free_idx);
+    }
+
+    return pages_start + PAGE_SIZE * free_idx;
 }
+
+
 
 //Random Policy
 // static int cache_eviction() {
