@@ -1,4 +1,3 @@
-
 /*
  * (C) 2022, Cornell University
  * All rights reserved.
@@ -15,78 +14,217 @@
 #include "disk.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdbool.h>//WB cache
+#include <pthread.h>//WB cache
 
 #define ARTY_CACHED_NFRAMES 28
 #define NBLOCKS_PER_PAGE PAGE_SIZE / BLOCK_SIZE  /* 4KB / 512B == 8 */
-// #define MAX_CACHE_SIZE 256  // Total cache size
-// #define PRIVILEGED_PARTITION_SIZE 128  // Size of privileged partition
-
 int cache_slots[ARTY_CACHED_NFRAMES];
 char *pages_start = (void*)FRAME_CACHE_START;
 
-//Random Policy
-static int cache_eviction() {
-    /* Randomly select a cache slot to evict */
-    int idx = rand() % ARTY_CACHED_NFRAMES;
-    int frame_id = cache_slots[idx];
+//Write-Back Caching
+pthread_mutex_t cache_lock = PTHREAD_MUTEX_INITIALIZER;
+bool dirty_pages[ARTY_CACHED_NFRAMES] = {false};// Array to track dirty pages
+void paging_init() {
+    memset(cache_slots, 0xFF, sizeof(cache_slots));
+    memset(dirty_pages, 0, sizeof(dirty_pages));  // Initialize dirty pages array
+}
 
-    earth->disk_write(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * idx);
+static int cache_eviction() {
+    pthread_mutex_lock(&cache_lock);
+    int idx = rand() % ARTY_CACHED_NFRAMES;
+    if (dirty_pages[idx]) {
+        int frame_id = cache_slots[idx];
+        earth->disk_write(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * idx);
+        dirty_pages[idx] = false;
+    }
+    pthread_mutex_unlock(&cache_lock);
     return idx;
 }
 
 
-// For Random Eviction Strategy
-void paging_init() {                 // Function to initialize paging.
-    memset(cache_slots, 0xFF, sizeof(cache_slots)); // Initializes the cache_slots array, setting all values to -1 (0xFF).
-}
-
-int paging_invalidate_cache(int frame_id) { // Function to invalidate a specific frame in the cache.
-    for (int j = 0; j < ARTY_CACHED_NFRAMES; j++)  // Iterates through all cache slots.
-        if (cache_slots[j] == frame_id) cache_slots[j] = -1; // If the frame ID matches, it sets the cache slot to -1 (invalidates it).
+int paging_invalidate_cache(int frame_id) {
+    for (int j = 0; j < ARTY_CACHED_NFRAMES; j++)
+        if (cache_slots[j] == frame_id) cache_slots[j] = -1;
 }
 
 
-int paging_write(int frame_id, int page_no) { // Function to handle writing a page to a cache frame.
-    char* src = (void*)(page_no << 12); // Calculates the source address by shifting the page number left by 12 bits (effectively multiplying by 4096, the size of a page).
-    if (earth->platform == QEMU) {      // Checks if the platform is QEMU.
-        memcpy(pages_start + frame_id * PAGE_SIZE, src, PAGE_SIZE); // Directly copies the page to the cache for QEMU platform.
+int find_or_evict_cache_slot(int frame_id) {
+    // First, try to find a free cache slot
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        if (cache_slots[i] == -1) { // Check for a free slot
+            return i;
+        }
+    }
+
+    // If no free slot is found, use the cache eviction strategy
+    return cache_eviction();
+}
+
+
+int paging_write(int frame_id, int page_no) {
+    pthread_mutex_lock(&cache_lock);
+    char* src = (void*)(page_no << 12);
+
+    if (earth->platform == QEMU) {
+        int cache_idx = find_or_evict_cache_slot(frame_id); 
+        memcpy(pages_start + PAGE_SIZE * cache_idx, src, PAGE_SIZE);
+        dirty_pages[cache_idx] = true; // Mark the page as dirty even for QEMU
+        pthread_mutex_unlock(&cache_lock);
         return 0;
     }
+    
 
-    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++)  // Iterates through the cache slots.
-        if (cache_slots[i] == frame_id) {          // Checks if the current slot holds the frame.
-            memcpy(pages_start + PAGE_SIZE * i, src, PAGE_SIZE) != NULL; // Copies the page to the cache slot.
+    // Check if the frame is already in the cache
+    // for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+    //     if (cache_slots[i] == frame_id) {
+    //         memcpy(pages_start + PAGE_SIZE * i, src, PAGE_SIZE);
+    //         dirty_pages[i] = true; // Mark the page as dirty
+    //         return 0;
+    //     }
+    // }
+
+    // Check if the frame is already in the cache
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        if (cache_slots[i] == frame_id) {
+            // Only perform memcpy if the data is different
+            if (memcmp(pages_start + PAGE_SIZE * i, src, PAGE_SIZE) != 0) {
+                memcpy(pages_start + PAGE_SIZE * i, src, PAGE_SIZE);
+                dirty_pages[i] = true; // Mark the page as dirty
+            }
             return 0;
         }
-
-    int free_idx = cache_eviction();  // If no matching frame is found, evict a frame.
-    cache_slots[free_idx] = frame_id; // Update the cache slot with the new frame ID.
-    memcpy(pages_start + PAGE_SIZE * free_idx, src, PAGE_SIZE); // Copy the page to the newly freed cache slot.
-}
-
-char* paging_read(int frame_id, int alloc_only) {  // Function to handle reading a page from a cache frame.
-    if (earth->platform == QEMU) return pages_start + frame_id * PAGE_SIZE; // Directly returns the page address for QEMU platform.
-
-    int free_idx = -1;                            // Initializes the index for a free slot.
-    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) { // Iterates through the cache slots.
-        if (cache_slots[i] == -1 && free_idx == -1) free_idx = i; // Finds the first free slot.
-        if (cache_slots[i] == frame_id) return pages_start + PAGE_SIZE * i; // Returns the address of the page if found in cache.
     }
 
-    if (free_idx == -1) free_idx = cache_eviction(); // If no free slot, evict a slot.
-    cache_slots[free_idx] = frame_id;                // Updates the cache slot with the new frame ID.
+    // If the frame is not in the cache, find a free slot or use eviction
+    int free_idx = -1;
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        if (cache_slots[i] == -1) { // Check for a free slot
+            free_idx = i;
+            break;
+        }
+    }
 
-    if (!alloc_only) // If not just allocating, also read the page from the disk.
-        earth->disk_read(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * free_idx);
+    // If no free slot is found, evict a random page
+    if (free_idx == -1) {
+        free_idx = cache_eviction();
+    }
 
-    return pages_start + PAGE_SIZE * free_idx; // Returns the address of the page in cache.
+    cache_slots[free_idx] = frame_id;
+    memcpy(pages_start + PAGE_SIZE * free_idx, src, PAGE_SIZE);
+    dirty_pages[free_idx] = true; // Mark the new page as dirty
+    pthread_mutex_unlock(&cache_lock);
+    return 0;
 }
+
+
+char* paging_read(int frame_id, int alloc_only) {
+    pthread_mutex_lock(&cache_lock);
+    if (earth->platform == QEMU) {
+        int cache_idx = find_or_evict_cache_slot(frame_id); // Use this function to manage cache slots
+
+        // Check if the data needs to be loaded or updated
+        if (!alloc_only && memcmp(pages_start + PAGE_SIZE * cache_idx, (void*)(frame_id << 12), PAGE_SIZE) != 0) {
+            earth->disk_read(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * cache_idx);
+            dirty_pages[cache_idx] = false; // Mark the page as not dirty after loading
+        }
+
+        pthread_mutex_unlock(&cache_lock);
+        return pages_start + PAGE_SIZE * cache_idx;
+    }
+
+    int cache_idx = -1;
+
+    // Search for the frame in the cache
+    for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
+        if (cache_slots[i] == frame_id) {
+            return pages_start + PAGE_SIZE * i; // Frame found in cache
+        }
+        if (cache_slots[i] == -1 && cache_idx == -1) {
+            cache_idx = i; // Remember the first free slot
+        }
+    }
+
+    // If the frame is not in the cache, find or create a slot for it
+    if (cache_idx == -1) {
+        cache_idx = cache_eviction(); // Evict a page if no free slot available
+    }
+
+    cache_slots[cache_idx] = frame_id;
+
+    // Lazy loading: Load the page into the cache only if it's going to be used
+    if (!alloc_only) {
+        earth->disk_read(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * cache_idx);
+        dirty_pages[cache_idx] = false; // Mark the newly loaded page as not dirty
+    }
+    pthread_mutex_unlock(&cache_lock);
+    return pages_start + PAGE_SIZE * cache_idx;
+}
+
+// //Random Policy
+// static int cache_eviction() {
+//     /* Randomly select a cache slot to evict */
+//     int idx = rand() % ARTY_CACHED_NFRAMES;
+//     int frame_id = cache_slots[idx];
+
+//     earth->disk_write(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * idx);
+//     return idx;
+// }
+
+
+// // For Random Eviction Strategy
+// void paging_init() {                 // Function to initialize paging.
+//     memset(cache_slots, 0xFF, sizeof(cache_slots)); // Initializes the cache_slots array, setting all values to -1 (0xFF).
+// }
+
+// int paging_invalidate_cache(int frame_id) { // Function to invalidate a specific frame in the cache.
+//     for (int j = 0; j < ARTY_CACHED_NFRAMES; j++)  // Iterates through all cache slots.
+//         if (cache_slots[j] == frame_id) cache_slots[j] = -1; // If the frame ID matches, it sets the cache slot to -1 (invalidates it).
+// }
+
+
+// int paging_write(int frame_id, int page_no) { // Function to handle writing a page to a cache frame.
+//     char* src = (void*)(page_no << 12); // Calculates the source address by shifting the page number left by 12 bits (effectively multiplying by 4096, the size of a page).
+//     if (earth->platform == QEMU) {      // Checks if the platform is QEMU.
+//         memcpy(pages_start + frame_id * PAGE_SIZE, src, PAGE_SIZE); // Directly copies the page to the cache for QEMU platform.
+//         return 0;
+//     }
+
+//     for (int i = 0; i < ARTY_CACHED_NFRAMES; i++)  // Iterates through the cache slots.
+//         if (cache_slots[i] == frame_id) {          // Checks if the current slot holds the frame.
+//             memcpy(pages_start + PAGE_SIZE * i, src, PAGE_SIZE) != NULL; // Copies the page to the cache slot.
+//             return 0;
+//         }
+
+//     int free_idx = cache_eviction();  // If no matching frame is found, evict a frame.
+//     cache_slots[free_idx] = frame_id; // Update the cache slot with the new frame ID.
+//     memcpy(pages_start + PAGE_SIZE * free_idx, src, PAGE_SIZE); // Copy the page to the newly freed cache slot.
+// }
+
+// char* paging_read(int frame_id, int alloc_only) {  // Function to handle reading a page from a cache frame.
+//     if (earth->platform == QEMU) return pages_start + frame_id * PAGE_SIZE; // Directly returns the page address for QEMU platform.
+
+//     int free_idx = -1;                            // Initializes the index for a free slot.
+//     for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) { // Iterates through the cache slots.
+//         if (cache_slots[i] == -1 && free_idx == -1) free_idx = i; // Finds the first free slot.
+//         if (cache_slots[i] == frame_id) return pages_start + PAGE_SIZE * i; // Returns the address of the page if found in cache.
+//     }
+
+//     if (free_idx == -1) free_idx = cache_eviction(); // If no free slot, evict a slot.
+//     cache_slots[free_idx] = frame_id;                // Updates the cache slot with the new frame ID.
+
+//     if (!alloc_only) // If not just allocating, also read the page from the disk.
+//         earth->disk_read(frame_id * NBLOCKS_PER_PAGE, NBLOCKS_PER_PAGE, pages_start + PAGE_SIZE * free_idx);
+
+//     return pages_start + PAGE_SIZE * free_idx; // Returns the address of the page in cache.
+// }
 
 
 
 
 //LFRU policy
+// #define MAX_CACHE_SIZE 256  // Total cache size
+// #define PRIVILEGED_PARTITION_SIZE 128  // Size of privileged partition
 // typedef struct cache_page {
 //     int frame_id;
 //     int access_frequency;
