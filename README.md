@@ -46,7 +46,7 @@ The goal is to make OS education more connected with computer architecture.
 ## Main Change from Original Edition (Updated Jan. 2024)
 In this edition of egos-2000, I have introduced several significant changes and improvements compared to the original edition. Some of the main changes include:
 
-## CPU Memory Management Unit (MMU) Development
+## 1. CPU Memory Management Unit (MMU) Development
 
 In the `cpu_mmu.c` file, significant developments were made to enhance the Memory Management Unit (MMU) for our operating system. This work included the implementation of critical functions such as `setup_identity_region`, `pagetable_identity_mapping`, `page_table_map`, and MMU initialization.
 
@@ -62,7 +62,7 @@ In the `cpu_mmu.c` file, significant developments were made to enhance the Memor
 
 These enhancements have led to a more robust MMU setup, improving system stability, security, and performance, ultimately reducing the likelihood of critical system errors.
 
-## Operating System Kernel Development
+## 2. Operating System Kernel Development
 
 In the `kernel.c` file, significant enhancements and optimizations were made to the operating system kernel, focusing on improving process scheduling, fault handling, and system calls to increase overall efficiency and reliability.
 
@@ -80,7 +80,7 @@ In the `kernel.c` file, significant enhancements and optimizations were made to 
 
 These enhancements and optimizations have led to improvements in system performance and reliability, contributing to a more robust and efficient operating system.
 
-## File System Optimization Using Zero-Copy Techniques
+## 3. File System Optimization Using Zero-Copy Techniques
 
 In the `file.c` file, extensive optimizations were applied to the file system, with a focus on zero-copy techniques to improve overall system performance and responsiveness.
 
@@ -108,7 +108,7 @@ In the `file.c` file, extensive optimizations were applied to the file system, w
 
 These optimizations collectively resulted in enhanced file system performance, reduced latency for write operations, and improved overall system responsiveness.
 
-## Cache Management and Concurrency Control
+## 4. Cache Management and Concurrency Control
 
 In the `dev_page.c` file, the work was undertaken to enhance cache management and ensure thread safety in a multi-threaded environment, resulting in improved system performance, efficiency, and reliability.
 
@@ -130,7 +130,7 @@ In the `dev_page.c` file, the work was undertaken to enhance cache management an
 
 These actions collectively resulted in a improvement in cache management efficiency, reduced disk I/O, enhanced system performance, and ensured thread safety and data integrity in multi-threaded scenarios.
 
-## Thread Management and Synchronization
+## 5. Thread Management and Synchronization
 
 In the `ult.c` file, substantial work was undertaken to develop a Thread Management System, context switching mechanism, and advanced synchronization techniques for efficient multi-threading in a C-based project.
 
