@@ -43,7 +43,7 @@ egos-2000 also has a [special version](https://github.com/yhzhang0128/egos-2000/
 The goal is to make OS education more connected with computer architecture.
 
 
-## Main Change from Original Edition
+## Main Change from Original Edition (Updated Jan. 2024)
 In this edition of egos-2000, I have introduced several significant changes and improvements compared to the original edition. Some of the main changes include:
 
 ## CPU Memory Management Unit (MMU) Development
@@ -90,7 +90,11 @@ In the `file.c` file, extensive optimizations were applied to the file system, w
 
 - **Minimize Internal Copying:** Avoided unnecessary data copying within functions, especially when dealing with indirect blocks.
 
+- **Direct I/O Strategies:** Implemented direct I/O strategies to reduce data copying and minimize system call overhead during file operations.
+
 - **Efficient Buffer Management:** Managed buffers efficiently for reading blocks, such as indirect blocks, to reduce memory operation overhead.
+
+- **Inode Updates:** Grouped inode updates to minimize the number of write operations, improving file system performance.
 
 ### Proposed Optimizations:
 
@@ -101,6 +105,10 @@ In the `file.c` file, extensive optimizations were applied to the file system, w
 - **Inode Updates:** Grouped inode updates to minimize write operations, enhancing file system performance.
 
 - **Error Handling and Recovery:** Implemented robust error handling, ensuring file system consistency and recovery in case of failures.
+
+### Results:
+
+- **Performance Enhancement:** These optimizations significantly enhanced file system performance, reducing latency for write operations, and improving overall system responsiveness.
 
 These optimizations collectively resulted in enhanced file system performance, reduced latency for write operations, and improved overall system responsiveness.
 
