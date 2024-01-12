@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* Author: Yunhao Zhang(Random) & I-Hsuan Huang(LFRU & LRU)
+/* Author: Yunhao Zhang(Random) & I-Hsuan Huang(Writeback-Aware Cache & LFRU & LRU)
  * Description: a 1MB (256*4KB) paging device
  * for QEMU, 256 physical frames start at address FRAME_CACHE_START
  * for Arty, 28 physical frames are cached at address FRAME_CACHE_START
@@ -30,6 +30,9 @@ void paging_init() {
     memset(dirty_pages, 0, sizeof(dirty_pages));  // Initialize dirty pages array
 }
 
+// Writeback-Aware Cache Eviction:
+// Original Policy: Random eviction without considering the state of the pages.
+// Improved Approach: Implemented a write-back mechanism to track dirty pages (pages modified but not written to disk). This ensures that only necessary data is written back to the disk upon eviction, reducing unnecessary I/O operations.
 static int cache_eviction() {
     pthread_mutex_lock(&cache_lock);
     int idx = rand() % ARTY_CACHED_NFRAMES;
@@ -48,7 +51,7 @@ int paging_invalidate_cache(int frame_id) {
         if (cache_slots[j] == frame_id) cache_slots[j] = -1;
 }
 
-
+//helper function
 int find_or_evict_cache_slot(int frame_id) {
     // First, try to find a free cache slot
     for (int i = 0; i < ARTY_CACHED_NFRAMES; i++) {
@@ -61,7 +64,11 @@ int find_or_evict_cache_slot(int frame_id) {
     return cache_eviction();
 }
 
-
+// Original Policy: Direct write to cache without dirty tracking.
+// Improved Approach: Included logic to mark pages as dirty when written to. This optimizes the decision-making process for which pages need to be written back to the disk.
+// Efficiency in Memory and I/O Operations:
+// Original Policy: Standard memory operations.
+// Improved Approach: Optimized memcpy usage to ensure it is only used when necessary and efficient. This optimization reduces system overhead and improves overall performance.
 int paging_write(int frame_id, int page_no) {
     pthread_mutex_lock(&cache_lock);
     char* src = (void*)(page_no << 12);
@@ -117,7 +124,8 @@ int paging_write(int frame_id, int page_no) {
     return 0;
 }
 
-
+// Original Policy: Immediate disk read for non-cached pages.
+// Improved Approach: Implemented lazy loading, where pages are loaded into the cache only if they are going to be used, minimizing unnecessary disk reads.
 char* paging_read(int frame_id, int alloc_only) {
     pthread_mutex_lock(&cache_lock);
     if (earth->platform == QEMU) {
