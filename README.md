@@ -180,3 +180,8 @@ Many thanks to [Robbert van Renesse](https://www.cs.cornell.edu/home/rvr/), [Lor
 Many thanks to all the CS5411/4411 students at Cornell over the years for helping improve this course.
 Many thanks to [Cheng Tan](https://naizhengtan.github.io/) for providing valuable feedback and using egos-2000 in his [CS6640 at Northeastern](https://naizhengtan.github.io/23fall/).
 Many thanks to Brandon Fusi for [porting to the Allwinner's D1 chip](https://github.com/cheofusi/egos-2000-d1) using Sipeed's Lichee RV64 compute module.
+
+## Reference
+
+- [Writeback-Aware Caching](https://www.pdl.cmu.edu/PDL-FTP/Storage/2020.apocs.writeback.pdf)
+- [Brief Announcement: Writeback-Aware Caching](https://www.cs.cmu.edu/~beckmann/publications/papers/2019.spaa.ba.writeback.pdf)
