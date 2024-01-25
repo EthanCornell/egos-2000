@@ -150,8 +150,6 @@ In the `ult.c` file, substantial work was undertaken to develop a Thread Managem
 
 - **Semaphore-Based Solutions:** Developed semaphore-based solutions for handling producer-consumer problems, ensuring safe multi-threaded operations and optimized resource use.
 
-- **Context Transition Management:** Engineered `ctx_start` and `ctx_switch` functions, extrapolated from assembly code, for managing thread context transitions using `setjmp` and `longjmp`.
-
 - **Dynamic Memory Management:** Constructed a comprehensive thread management framework with capabilities like `thread_create`, `thread_yield`, and `thread_exit`, integrating dynamic memory management for thread stacks.
 
 - **Semaphore Operations:** Implemented a `sema` struct for semaphore operations, crafting functions such as `sema_init`, `sema_inc`, and `sema_dec` for regulated access to shared resources in a multi-threaded environment.
