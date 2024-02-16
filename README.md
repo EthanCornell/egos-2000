@@ -43,7 +43,7 @@ egos-2000 also has a [special version](https://github.com/yhzhang0128/egos-2000/
 The goal is to make OS education more connected with computer architecture.
 
 
-## Main Change from Original Edition (Updated Jan. 2024)
+## Main Change from Original Edition
 In this edition of egos-2000, I have introduced several significant changes and improvements compared to the original edition. Some of the main changes include:
 
 ## 1. CPU Memory Management Unit (MMU) Development
