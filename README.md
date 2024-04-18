@@ -144,6 +144,34 @@ In the `ult.c` file, substantial work was undertaken to develop a Thread Managem
 
 - **Improved Performance:** Enhanced thread management, resulting in improved system performance and responsiveness.
 
+## 6. Memory Management Unit (MMU) Development and Multithreading Enhancement
+
+In the context of a simulated operating system developed based on specifications provided by Cornell University, substantial advancements were made to the Memory Management Unit (MMU) to ensure efficient and secure memory management while enhancing multi-threading capabilities.
+
+## Highlights
+
+### Core MMU Development:
+- **Implemented Core Functionalities:** Established fundamental components of the MMU, including page table management, software TLB, and dynamic physical frame allocation.
+- **System Initialization:** Successfully executed MMU initialization routines to manage physical memory protection (PMP) settings and memory translation mechanisms, thereby enhancing system security and performance.
+
+### Multithreading Enhancements:
+- **Mutex and Condition Variables:** Implemented mutex locks and condition variables to synchronize frame allocation and release, ensuring robust thread safety for concurrent operations.
+- **Read-Write Locks:** Utilized read-write locks in software TLB management, optimizing the system for high concurrency by allowing multiple readers concurrently with exclusive writers, thereby reducing contention and enhancing efficiency.
+
+### Optimization and Testing:
+- **Performance Tuning:** Refined memory management strategies to minimize latency and maximize throughput, particularly for memory-intensive multi-threaded operations.
+- **Rigorous Debugging and Testing:** Conducted thorough testing and debugging of the MMU, employing unit and integration tests to ensure functionality, reliability, and robustness.
+
+## Technologies Used
+- C
+- POSIX Threads (pthreads)
+- GDB Debugger
+- Linux
+
+## Professional Impact
+The enhancements made to the MMU not only improved system stability and security but also contributed significantly to the overall robustness and performance of the operating system simulation, reducing the likelihood of critical errors and enhancing memory management efficiency.
+
+
 ### Advanced Thread Management and Synchronization:
 
 - **Resilient System:** Built a resilient system for thread life-cycle management, including creation, context switching, and termination.
