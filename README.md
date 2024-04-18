@@ -164,10 +164,9 @@ This work provided profound expertise and hands-on experience in low-level threa
 
 ## 6. Memory Management Unit (MMU) Development and Multithreading Enhancement
 
-In the context of a simulated operating system developed based on specifications provided by Cornell University, substantial advancements were made to the Memory Management Unit (MMU) to ensure efficient and secure memory management while enhancing multi-threading capabilities.
+In the context of a simulated operating system developed based on specifications provided by our team at Cornell, advancements were made to the Memory Management Unit (MMU) to ensure efficient and secure memory management while enhancing multi-threading capabilities.
 
-## Highlights
-
+### Highlights:
 ### Core MMU Development:
 - **Implemented Core Functionalities:** Established fundamental components of the MMU, including page table management, software TLB, and dynamic physical frame allocation.
 - **System Initialization:** Successfully executed MMU initialization routines to manage physical memory protection (PMP) settings and memory translation mechanisms, thereby enhancing system security and performance.
