@@ -12,6 +12,8 @@
 #include "disk.h"
 #include "servers.h"
 #include <string.h>
+#include <pthread.h>
+
 /* Interface of the paging device, see earth/dev_page.c */
 void  paging_init();                 // Function prototype to initialize paging.
 int   paging_invalidate_cache(int frame_id); // Invalidate cache for a frame.
@@ -20,52 +22,135 @@ char* paging_read(int frame_id, int alloc_only); // Read from a frame, possibly 
 
 /* Allocation and free of physical frames */
 #define NFRAMES 256               // Define a constant for the number of frames.
+
+pthread_mutex_t frame_table_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t frame_available = PTHREAD_COND_INITIALIZER;  // Condition variable for frame availability
+pthread_rwlock_t tlb_rwlock = PTHREAD_RWLOCK_INITIALIZER;   // Read-write lock for the TLB operations
+
 struct frame_mapping {
     int use;     // Is the frame allocated?
     int pid;     // Which process owns the frame?
     int page_no; // Which virtual page is the frame mapped to?
 } table[NFRAMES];                 // Array of frame mappings.
 
-int mmu_alloc(int* frame_id, void** cached_addr) { // Allocate a frame.
-    for (int i = 0; i < NFRAMES; i++) // Loop through the frames.
-        if (!table[i].use) {    // If frame is not in use:
-            *frame_id = i;       // Set the frame ID.
-            *cached_addr = paging_read(i, 1); // Read the frame, allocating if necessary.
-            table[i].use = 1;    // Mark the frame as used.
-            return 0;            // Return success.
+
+// Using Read-Write Locks
+// Read-write locks are useful for optimizing scenarios where data is frequently read but less frequently modified. They allow multiple readers to access the data concurrently but require exclusive access for writers. This can be particularly effective for operations like soft_tlb_switch, where checks on the current process ID (curr_vm_pid) are frequent but changes to it are less frequent.
+// Read-Write Locks: soft_tlb_map() uses a write lock because it modifies shared data. soft_tlb_switch() first attempts to read the current process ID and, if a change is necessary, it acquires a write lock to update the TLB and the current process ID. This allows multiple readers concurrently, improving performance when there's no change in the process ID.
+
+// Using Condition Variables
+// Condition variables can help manage synchronization more efficiently when threads need to wait for certain conditions to be true before proceeding. For example, in mmu_alloc, a thread that cannot find a free frame might wait until a frame becomes available, which can be signaled by mmu_free.
+// Condition Variables: mmu_alloc() now waits on a condition variable if no frames are available, and mmu_free() signals this condition when frames are freed, waking up waiting threads.
+
+
+// int mmu_alloc(int* frame_id, void** cached_addr) { // Allocate a frame.
+//     for (int i = 0; i < NFRAMES; i++) // Loop through the frames.
+//         if (!table[i].use) {    // If frame is not in use:
+//             *frame_id = i;       // Set the frame ID.
+//             *cached_addr = paging_read(i, 1); // Read the frame, allocating if necessary.
+//             table[i].use = 1;    // Mark the frame as used.
+//             return 0;            // Return success.
+//         }
+//     FATAL("mmu_alloc: no more available frames"); // If no frames available, fatal error.
+// }
+
+int mmu_alloc(int* frame_id, void** cached_addr) {
+    pthread_mutex_lock(&frame_table_mutex);
+    while (1) {
+        for (int i = 0; i < NFRAMES; i++) {
+            if (!table[i].use) {
+                *frame_id = i;
+                *cached_addr = paging_read(i, 1);
+                table[i].use = 1;
+                pthread_mutex_unlock(&frame_table_mutex);
+                return 0;
+            }
         }
-    FATAL("mmu_alloc: no more available frames"); // If no frames available, fatal error.
+        // Wait for a frame to become available
+        pthread_cond_wait(&frame_available, &frame_table_mutex);
+    }
+    // Not reachable, but needed for compiler happiness
+    pthread_mutex_unlock(&frame_table_mutex);
+    FATAL("mmu_alloc: no more available frames");
 }
 
-int mmu_free(int pid) {             // Free frames for a process.
-    for (int i = 0; i < NFRAMES; i++) // Loop through frames.
-        if (table[i].use && table[i].pid == pid) { // If frame is used by the process:
-            paging_invalidate_cache(i); // Invalidate the frame's cache.
-            memset(&table[i], 0, sizeof(struct frame_mapping)); // Reset the frame's mapping.
+// int mmu_free(int pid) {             // Free frames for a process.
+//     for (int i = 0; i < NFRAMES; i++) // Loop through frames.
+//         if (table[i].use && table[i].pid == pid) { // If frame is used by the process:
+//             paging_invalidate_cache(i); // Invalidate the frame's cache.
+//             memset(&table[i], 0, sizeof(struct frame_mapping)); // Reset the frame's mapping.
+//         }
+// }
+
+int mmu_free(int pid) {
+    pthread_mutex_lock(&frame_table_mutex);
+    int freed = 0;
+    for (int i = 0; i < NFRAMES; i++) {
+        if (table[i].use && table[i].pid == pid) {
+            paging_invalidate_cache(i);
+            memset(&table[i], 0, sizeof(struct frame_mapping));
+            freed = 1;
         }
+    }
+    if (freed) {
+        pthread_cond_broadcast(&frame_available);
+    }
+    pthread_mutex_unlock(&frame_table_mutex);
 }
 
 /* Software TLB Translation */
-int soft_tlb_map(int pid, int page_no, int frame_id) { // Map a virtual page to a frame.
-    table[frame_id].pid = pid;       // Set the process ID for the frame.
-    table[frame_id].page_no = page_no; // Set the virtual page number for the frame.
+// int soft_tlb_map(int pid, int page_no, int frame_id) { // Map a virtual page to a frame.
+//     table[frame_id].pid = pid;       // Set the process ID for the frame.
+//     table[frame_id].page_no = page_no; // Set the virtual page number for the frame.
+// }
+
+int soft_tlb_map(int pid, int page_no, int frame_id) {
+    pthread_rwlock_wrlock(&tlb_rwlock);
+    table[frame_id].pid = pid;
+    table[frame_id].page_no = page_no;
+    pthread_rwlock_unlock(&tlb_rwlock);
 }
 
-int soft_tlb_switch(int pid) {       // Switch the TLB context for a process.
-    static int curr_vm_pid = -1;     // Static variable for the current VM process ID.
-    if (pid == curr_vm_pid) return 0; // If the process is already the current, return.
+// int soft_tlb_switch(int pid) {       // Switch the TLB context for a process.
+//     static int curr_vm_pid = -1;     // Static variable for the current VM process ID.
+//     if (pid == curr_vm_pid) return 0; // If the process is already the current, return.
 
-    // Unmap curr_vm_pid from the user address space
-    for (int i = 0; i < NFRAMES; i++) // Loop through frames.
-        if (table[i].use && table[i].pid == curr_vm_pid) // If frame belongs to current process:
-            paging_write(i, table[i].page_no); // Write the frame to its page.
+//     // Unmap curr_vm_pid from the user address space
+//     for (int i = 0; i < NFRAMES; i++) // Loop through frames.
+//         if (table[i].use && table[i].pid == curr_vm_pid) // If frame belongs to current process:
+//             paging_write(i, table[i].page_no); // Write the frame to its page.
 
-    // Map pid to the user address space
-    for (int i = 0; i < NFRAMES; i++) // Loop through frames.
-        if (table[i].use && table[i].pid == pid) // If frame belongs to new process:
-            memcpy((void*)(table[i].page_no << 12), paging_read(i, 0), PAGE_SIZE); // Copy data from frame to virtual page.
+//     // Map pid to the user address space
+//     for (int i = 0; i < NFRAMES; i++) // Loop through frames.
+//         if (table[i].use && table[i].pid == pid) // If frame belongs to new process:
+//             memcpy((void*)(table[i].page_no << 12), paging_read(i, 0), PAGE_SIZE); // Copy data from frame to virtual page.
 
-    curr_vm_pid = pid;               // Update the current VM process ID.
+//     curr_vm_pid = pid;               // Update the current VM process ID.
+// }
+
+int soft_tlb_switch(int pid) {
+    pthread_rwlock_rdlock(&tlb_rwlock);
+    static int curr_vm_pid = -1;
+    if (pid == curr_vm_pid) {
+        pthread_rwlock_unlock(&tlb_rwlock);
+        return 0;
+    }
+    pthread_rwlock_unlock(&tlb_rwlock);
+
+    // Lock for writing since we need to modify curr_vm_pid and potentially the page table
+    pthread_rwlock_wrlock(&tlb_rwlock);
+    for (int i = 0; i < NFRAMES; i++) {
+        if (table[i].use && table[i].pid == curr_vm_pid)
+            paging_write(i, table[i].page_no);
+    }
+
+    for (int i = 0; i < NFRAMES; i++) {
+        if (table[i].use && table[i].pid == pid)
+            memcpy((void*)(table[i].page_no << 12), paging_read(i, 0), PAGE_SIZE);
+    }
+
+    curr_vm_pid = pid;
+    pthread_rwlock_unlock(&tlb_rwlock);
 }
 
 /* Page Table Translation
