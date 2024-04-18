@@ -175,9 +175,9 @@ In the context of a simulated operating system developed based on specifications
 - **Mutex and Condition Variables:** Implemented mutex locks and condition variables to synchronize frame allocation and release, ensuring robust thread safety for concurrent operations.
 - **Read-Write Locks:** Utilized read-write locks in software TLB management, optimizing the system for high concurrency by allowing multiple readers concurrently with exclusive writers, thereby reducing contention and enhancing efficiency.
 
-### Optimization and Testing:
+### Optimization and Testing[TODO]:
 - **Performance Tuning:** Refined memory management strategies to minimize latency and maximize throughput, particularly for memory-intensive multi-threaded operations.
-- **Rigorous Debugging and Testing:** Conducted thorough testing and debugging of the MMU, employing unit and integration tests to ensure functionality, reliability, and robustness.
+- **Rigorous Debugging and Testing[TODO]:** Conducted thorough testing and debugging of the MMU, employing unit and integration tests to ensure functionality, reliability, and robustness.
 
 ## Technologies Used
 - C
