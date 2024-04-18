@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-/* Author: Yunhao Zhang
+/* Author: Yunhao Zhang & I-Hsuan Huang
  * Description: helper functions for managing processes
  */
 
