@@ -144,6 +144,24 @@ In the `ult.c` file, substantial work was undertaken to develop a Thread Managem
 
 - **Improved Performance:** Enhanced thread management, resulting in improved system performance and responsiveness.
 
+### Advanced Thread Management and Synchronization:
+
+- **Resilient System:** Built a resilient system for thread life-cycle management, including creation, context switching, and termination.
+
+- **Semaphore-Based Solutions:** Developed semaphore-based solutions for handling producer-consumer problems, ensuring safe multi-threaded operations and optimized resource use.
+
+- **Dynamic Memory Management:** Constructed a comprehensive thread management framework with capabilities like `thread_create`, `thread_yield`, and `thread_exit`, integrating dynamic memory management for thread stacks.
+
+- **Semaphore Operations:** Implemented a `sema` struct for semaphore operations, crafting functions such as `sema_init`, `sema_inc`, and `sema_dec` for regulated access to shared resources in a multi-threaded environment.
+
+- **Producer-Consumer Handling:** Orchestrated producer-consumer processes using semaphores to efficiently handle shared buffers, ensuring synchronized operations between producers and consumers.
+
+- **Performance Enhancement:** Achieved a significant enhancement in the multi-threading mechanism, resulting in more effective context switching and thread administration.
+
+- **Resource Distribution:** Facilitated improved resource distribution among threads, leading to enhanced application performance and stability in multi-threaded contexts.
+
+This work provided profound expertise and hands-on experience in low-level thread management and inter-thread communication within C programming, ultimately contributing to a more robust and efficient multi-threaded system.
+
 ## 6. Memory Management Unit (MMU) Development and Multithreading Enhancement
 
 In the context of a simulated operating system developed based on specifications provided by Cornell University, substantial advancements were made to the Memory Management Unit (MMU) to ensure efficient and secure memory management while enhancing multi-threading capabilities.
@@ -171,24 +189,6 @@ In the context of a simulated operating system developed based on specifications
 ## Professional Impact
 The enhancements made to the MMU not only improved system stability and security but also contributed significantly to the overall robustness and performance of the operating system simulation, reducing the likelihood of critical errors and enhancing memory management efficiency.
 
-
-### Advanced Thread Management and Synchronization:
-
-- **Resilient System:** Built a resilient system for thread life-cycle management, including creation, context switching, and termination.
-
-- **Semaphore-Based Solutions:** Developed semaphore-based solutions for handling producer-consumer problems, ensuring safe multi-threaded operations and optimized resource use.
-
-- **Dynamic Memory Management:** Constructed a comprehensive thread management framework with capabilities like `thread_create`, `thread_yield`, and `thread_exit`, integrating dynamic memory management for thread stacks.
-
-- **Semaphore Operations:** Implemented a `sema` struct for semaphore operations, crafting functions such as `sema_init`, `sema_inc`, and `sema_dec` for regulated access to shared resources in a multi-threaded environment.
-
-- **Producer-Consumer Handling:** Orchestrated producer-consumer processes using semaphores to efficiently handle shared buffers, ensuring synchronized operations between producers and consumers.
-
-- **Performance Enhancement:** Achieved a significant enhancement in the multi-threading mechanism, resulting in more effective context switching and thread administration.
-
-- **Resource Distribution:** Facilitated improved resource distribution among threads, leading to enhanced application performance and stability in multi-threaded contexts.
-
-This work provided profound expertise and hands-on experience in low-level thread management and inter-thread communication within C programming, ultimately contributing to a more robust and efficient multi-threaded system.
 
 
 ### Usages and Documentation
